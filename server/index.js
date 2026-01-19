@@ -165,7 +165,7 @@ async function sendOrderEmails(orderData) {
   try {
     // Email to customer
     await resend.emails.send({
-      from: '3D Print App <onboarding@resend.dev>',
+      from: '3D Print App <noreply@inphenix-system.fr>',
       to: orderData.customerEmail,
       subject: `Confirmation de commande - ${orderData.orderId.slice(-8).toUpperCase()}`,
       html: getCustomerEmailHTML(orderData)
@@ -174,7 +174,7 @@ async function sendOrderEmails(orderData) {
 
     // Email to admin
     await resend.emails.send({
-      from: '3D Print App <onboarding@resend.dev>',
+      from: '3D Print App <noreply@inphenix-system.fr>',
       to: ADMIN_EMAIL,
       subject: `Nouvelle commande - ${orderData.customerName} - ${orderData.totalPrice}€`,
       html: getAdminEmailHTML(orderData)
