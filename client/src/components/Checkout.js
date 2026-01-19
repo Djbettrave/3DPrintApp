@@ -51,25 +51,48 @@ function Checkout({ orderData, onBack, onSuccess }) {
     setError(null);
 
     try {
-      // En production, vous créeriez un PaymentIntent côté serveur
-      // et utiliseriez le client_secret retourné
-      // Pour la démo, on simule un succès
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+      // Créer le PaymentIntent côté serveur
+      const response = await fetch(`${API_URL}/api/create-payment-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: orderData.prices.totalPrice,
+          metadata: {
+            technology: orderData.technology,
+            material: orderData.material?.name,
+            quality: orderData.quality?.name,
+            volume: String(orderData.volume?.toFixed(2)),
+            delivery: orderData.delivery?.name,
+            customerEmail: formData.email,
+            customerName: `${formData.firstName} ${formData.lastName}`,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la création du paiement');
+      }
+
+      const { clientSecret } = await response.json();
+
+      // Confirmer le paiement avec Stripe
       const cardElement = elements.getElement(CardElement);
-
-      // Créer un token de paiement (pour la démo)
-      const { error: stripeError, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-        billing_details: {
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          phone: formData.phone,
-          address: {
-            line1: formData.address,
-            city: formData.city,
-            postal_code: formData.postalCode,
-            country: 'FR',
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: `${formData.firstName} ${formData.lastName}`,
+            email: formData.email,
+            phone: formData.phone,
+            address: {
+              line1: formData.address,
+              city: formData.city,
+              postal_code: formData.postalCode,
+              country: 'FR',
+            },
           },
         },
       });
@@ -80,19 +103,10 @@ function Checkout({ orderData, onBack, onSuccess }) {
         return;
       }
 
-      // Simuler un appel API pour créer la commande
-      // En production, envoyez paymentMethod.id au serveur
-      console.log('Payment Method:', paymentMethod);
-      console.log('Order:', { ...orderData, customer: formData });
-
-      // Simuler un délai de traitement
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
       // Succès
-      if (onSuccess) {
+      if (paymentIntent.status === 'succeeded' && onSuccess) {
         onSuccess({
-          orderId: `ORD-${Date.now()}`,
-          paymentMethod: paymentMethod.id,
+          orderId: paymentIntent.id,
           customer: formData,
           order: orderData,
         });
