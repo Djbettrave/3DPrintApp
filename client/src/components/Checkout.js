@@ -106,6 +106,7 @@ function Checkout({ orderData, onBack, onSuccess }) {
       // Succès - Sauvegarder la commande en BDD
       if (paymentIntent.status === 'succeeded') {
         try {
+          // 1. Sauvegarder la commande
           await fetch(`${API_URL}/api/orders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -116,8 +117,31 @@ function Checkout({ orderData, onBack, onSuccess }) {
               order: orderData,
             }),
           });
+
+          // 2. Uploader le fichier STL
+          if (orderData.stlFile) {
+            const fileFormData = new FormData();
+            fileFormData.append('stlFile', orderData.stlFile);
+
+            const uploadResponse = await fetch(`${API_URL}/api/upload-stl`, {
+              method: 'POST',
+              body: fileFormData,
+            });
+
+            if (uploadResponse.ok) {
+              const { fileKey, fileName, fileSize } = await uploadResponse.json();
+
+              // 3. Associer le fichier à la commande
+              await fetch(`${API_URL}/api/orders/${paymentIntent.id}/file`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileKey, fileName, fileSize }),
+              });
+              console.log('STL file uploaded successfully');
+            }
+          }
         } catch (saveError) {
-          console.error('Order save error:', saveError);
+          console.error('Order/upload error:', saveError);
           // On continue quand même, le paiement a réussi
         }
 

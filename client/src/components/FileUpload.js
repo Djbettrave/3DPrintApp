@@ -22,7 +22,7 @@ function FileUpload({ onFileLoad }) {
   const processFile = (file) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      onFileLoad(e.target.result, file.name);
+      onFileLoad(e.target.result, file.name, file);
     };
     reader.readAsArrayBuffer(file);
   };

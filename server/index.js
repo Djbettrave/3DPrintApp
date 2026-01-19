@@ -3,11 +3,15 @@ const cors = require('cors');
 const Stripe = require('stripe');
 const { Pool } = require('pg');
 const { Resend } = require('resend');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const multer = require('multer');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const ADMIN_EMAIL = 'rayane.safollahi@gmail.com';
+const R2_BUCKET = '3dprintapp-stl';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -20,6 +24,29 @@ const pool = new Pool({
 
 // Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Initialize Cloudflare R2 (S3-compatible)
+const r2Client = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
+});
+
+// Multer config for file uploads (memory storage for streaming to R2)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB max
+  fileFilter: (req, file, cb) => {
+    if (file.originalname.toLowerCase().endsWith('.stl')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Seuls les fichiers STL sont acceptés'), false);
+    }
+  }
+});
 
 // Email template for customer
 function getCustomerEmailHTML(orderData) {
@@ -223,11 +250,41 @@ async function initDatabase() {
         delivery_extra DECIMAL(10,2),
         total_price DECIMAL(10,2),
 
+        -- File storage
+        file_name VARCHAR(255),
+        file_key VARCHAR(255),
+        file_size BIGINT,
+        file_downloaded BOOLEAN DEFAULT false,
+        file_downloaded_at TIMESTAMP,
+
         -- Timestamps
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Add file columns if they don't exist (for existing tables)
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='file_name') THEN
+          ALTER TABLE orders ADD COLUMN file_name VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='file_key') THEN
+          ALTER TABLE orders ADD COLUMN file_key VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='file_size') THEN
+          ALTER TABLE orders ADD COLUMN file_size BIGINT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='file_downloaded') THEN
+          ALTER TABLE orders ADD COLUMN file_downloaded BOOLEAN DEFAULT false;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='file_downloaded_at') THEN
+          ALTER TABLE orders ADD COLUMN file_downloaded_at TIMESTAMP;
+        END IF;
+      END $$;
+    `);
+
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -400,6 +457,175 @@ app.patch('/api/orders/:orderId/status', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Update status error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload STL file to R2
+app.post('/api/upload-stl', upload.single('stlFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Aucun fichier fourni' });
+    }
+
+    const fileKey = `stl/${Date.now()}-${req.file.originalname}`;
+
+    // Upload to R2
+    await r2Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: fileKey,
+      Body: req.file.buffer,
+      ContentType: 'application/octet-stream',
+    }));
+
+    console.log('File uploaded to R2:', fileKey);
+
+    res.json({
+      success: true,
+      fileKey,
+      fileName: req.file.originalname,
+      fileSize: req.file.size
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update order with file info
+app.patch('/api/orders/:orderId/file', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { fileKey, fileName, fileSize } = req.body;
+
+    const result = await pool.query(
+      `UPDATE orders SET file_key = $1, file_name = $2, file_size = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE order_id = $4 RETURNING *`,
+      [fileKey, fileName, fileSize, orderId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Update file info error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get orders pending download (for workshop computer)
+app.get('/api/workshop/pending', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM orders
+       WHERE file_key IS NOT NULL
+       AND file_downloaded = false
+       ORDER BY created_at ASC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get pending orders error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get download URL for a file (signed URL valid for 1 hour)
+app.get('/api/workshop/download/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const result = await pool.query(
+      'SELECT * FROM orders WHERE order_id = $1',
+      [orderId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+
+    const order = result.rows[0];
+    if (!order.file_key) {
+      return res.status(404).json({ error: 'Aucun fichier associé à cette commande' });
+    }
+
+    // Generate signed URL for download
+    const command = new GetObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: order.file_key,
+    });
+    const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+
+    res.json({
+      orderId: order.order_id,
+      fileName: order.file_name,
+      fileSize: order.file_size,
+      downloadUrl: signedUrl
+    });
+  } catch (error) {
+    console.error('Get download URL error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark file as downloaded
+app.patch('/api/workshop/downloaded/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const result = await pool.query(
+      `UPDATE orders SET file_downloaded = true, file_downloaded_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE order_id = $1 RETURNING *`,
+      [orderId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+
+    res.json({ success: true, order: result.rows[0] });
+  } catch (error) {
+    console.error('Mark downloaded error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete file from R2 (cleanup after confirmed download)
+app.delete('/api/workshop/cleanup/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const result = await pool.query(
+      'SELECT * FROM orders WHERE order_id = $1',
+      [orderId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+
+    const order = result.rows[0];
+    if (!order.file_key) {
+      return res.status(404).json({ error: 'Aucun fichier à supprimer' });
+    }
+
+    // Delete from R2
+    await r2Client.send(new DeleteObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: order.file_key,
+    }));
+
+    // Update database
+    await pool.query(
+      `UPDATE orders SET file_key = NULL, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1`,
+      [orderId]
+    );
+
+    console.log('File deleted from R2:', order.file_key);
+    res.json({ success: true, message: 'Fichier supprimé' });
+  } catch (error) {
+    console.error('Cleanup error:', error);
     res.status(500).json({ error: error.message });
   }
 });

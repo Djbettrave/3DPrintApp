@@ -31,6 +31,7 @@ const STRIPE_OPTIONS = {
 function App() {
   const [fileData, setFileData] = useState(null);
   const [fileName, setFileName] = useState('');
+  const [originalFile, setOriginalFile] = useState(null);
   const [dimensions, setDimensions] = useState(null);
   const [volume, setVolume] = useState(0);
 
@@ -39,9 +40,10 @@ function App() {
   const [orderData, setOrderData] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
 
-  const handleFileLoad = useCallback((data, name) => {
+  const handleFileLoad = useCallback((data, name, file) => {
     setFileData(data);
     setFileName(name);
+    setOriginalFile(file);
   }, []);
 
   const handleModelLoad = useCallback((geometry) => {
@@ -54,6 +56,7 @@ function App() {
   const handleReset = () => {
     setFileData(null);
     setFileName('');
+    setOriginalFile(null);
     setDimensions(null);
     setVolume(0);
     setCurrentView('configurator');
@@ -62,7 +65,7 @@ function App() {
   };
 
   const handleCheckout = (data) => {
-    setOrderData(data);
+    setOrderData({ ...data, stlFile: originalFile, fileName });
     setCurrentView('checkout');
   };
 
