@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const Stripe = require('stripe');
 const { Pool } = require('pg');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 require('dotenv').config();
 
 const app = express();
@@ -18,14 +18,8 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Initialize Nodemailer
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD
-  }
-});
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email template for customer
 function getCustomerEmailHTML(orderData) {
@@ -170,8 +164,8 @@ function getAdminEmailHTML(orderData) {
 async function sendOrderEmails(orderData) {
   try {
     // Email to customer
-    await transporter.sendMail({
-      from: `"3D Print App" <${process.env.GMAIL_USER}>`,
+    await resend.emails.send({
+      from: '3D Print App <onboarding@resend.dev>',
       to: orderData.customerEmail,
       subject: `Confirmation de commande - ${orderData.orderId.slice(-8).toUpperCase()}`,
       html: getCustomerEmailHTML(orderData)
@@ -179,8 +173,8 @@ async function sendOrderEmails(orderData) {
     console.log('Customer email sent to:', orderData.customerEmail);
 
     // Email to admin
-    await transporter.sendMail({
-      from: `"3D Print App" <${process.env.GMAIL_USER}>`,
+    await resend.emails.send({
+      from: '3D Print App <onboarding@resend.dev>',
       to: ADMIN_EMAIL,
       subject: `Nouvelle commande - ${orderData.customerName} - ${orderData.totalPrice}€`,
       html: getAdminEmailHTML(orderData)
