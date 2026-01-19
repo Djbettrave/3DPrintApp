@@ -103,13 +103,31 @@ function Checkout({ orderData, onBack, onSuccess }) {
         return;
       }
 
-      // Succès
-      if (paymentIntent.status === 'succeeded' && onSuccess) {
-        onSuccess({
-          orderId: paymentIntent.id,
-          customer: formData,
-          order: orderData,
-        });
+      // Succès - Sauvegarder la commande en BDD
+      if (paymentIntent.status === 'succeeded') {
+        try {
+          await fetch(`${API_URL}/api/orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: paymentIntent.id,
+              stripePaymentId: paymentIntent.id,
+              customer: formData,
+              order: orderData,
+            }),
+          });
+        } catch (saveError) {
+          console.error('Order save error:', saveError);
+          // On continue quand même, le paiement a réussi
+        }
+
+        if (onSuccess) {
+          onSuccess({
+            orderId: paymentIntent.id,
+            customer: formData,
+            order: orderData,
+          });
+        }
       }
     } catch (err) {
       setError('Une erreur est survenue. Veuillez réessayer.');
