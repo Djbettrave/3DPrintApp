@@ -354,12 +354,13 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 400px;
+  grid-template-rows: 1fr;
   gap: var(--spacing-lg);
   padding: var(--spacing-lg);
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
-  min-height: 0; /* Important for flex child overflow */
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -372,7 +373,7 @@ body {
 @media (max-width: 1024px) {
   .app-main {
     grid-template-columns: 1fr;
-    grid-template-rows: 50% 50%;
+    grid-template-rows: 45% 55%;
     gap: var(--spacing-md);
     padding: var(--spacing-md);
   }
@@ -708,13 +709,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  min-height: 0; /* Important for flex child overflow */
-  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-right: var(--spacing-sm);
+  padding-bottom: var(--spacing-lg);
   /* Custom scrollbar */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
+}
+
+.sidebar > * {
+  flex-shrink: 0;
 }
 
 .sidebar::-webkit-scrollbar {
