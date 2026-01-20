@@ -77,6 +77,13 @@ body {
   overflow: hidden;
 }
 
+.App--scrollable {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: auto;
+}
+
 /* ============================================
    Header
    ============================================ */
@@ -95,6 +102,15 @@ body {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.logo--clickable {
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.logo--clickable:hover {
+  opacity: 0.8;
 }
 
 .logo-icon {

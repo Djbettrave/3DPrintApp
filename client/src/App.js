@@ -81,7 +81,7 @@ function App() {
   // Page de succès
   if (currentView === 'success') {
     return (
-      <div className="App">
+      <div className="App App--scrollable">
         <Elements stripe={stripePromise} options={STRIPE_OPTIONS}>
           <OrderSuccess orderDetails={orderDetails} onNewOrder={handleReset} />
         </Elements>
@@ -92,7 +92,7 @@ function App() {
   // Page de checkout
   if (currentView === 'checkout') {
     return (
-      <div className="App">
+      <div className="App App--scrollable">
         <Elements stripe={stripePromise} options={STRIPE_OPTIONS}>
           <Checkout
             orderData={orderData}
@@ -119,8 +119,8 @@ function App() {
                 </svg>
               </div>
               <div className="logo-text">
-                <h1>PrintQuote</h1>
-                <p>Devis impression 3D instantané</p>
+                <h1>Devis Impression 3D</h1>
+                <p>FDM & Résine - Prix instantané</p>
               </div>
             </div>
           </div>
@@ -224,7 +224,7 @@ function App() {
     <div className="App">
       <header className="app-header app-header--compact">
         <div className="header-content">
-          <div className="logo">
+          <div className="logo logo--clickable" onClick={handleReset} title="Retour à l'accueil">
             <div className="logo-icon logo-icon--small">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -233,7 +233,7 @@ function App() {
               </svg>
             </div>
             <div className="logo-text">
-              <h1>PrintQuote</h1>
+              <h1>Devis Impression 3D</h1>
             </div>
           </div>
           <button className="header-reset-btn" onClick={handleReset}>
