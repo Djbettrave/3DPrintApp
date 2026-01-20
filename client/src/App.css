@@ -370,12 +370,13 @@ body {
    ============================================ */
 .viewer-section {
   position: relative;
-  min-height: 500px;
+  height: 500px;
+  max-height: 500px;
 }
 
 .stl-viewer {
   height: 100%;
-  min-height: 500px;
+  max-height: 500px;
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);

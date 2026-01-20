@@ -53,7 +53,7 @@ function Model({ geometry, transformMode, scale, onScaleChange }) {
   );
 }
 
-function CameraController({ geometry, orbitControlsRef, triggerHome }) {
+function CameraController({ geometry, orbitControlsRef, triggerHome, zoomAction }) {
   const { camera } = useThree();
 
   useEffect(() => {
@@ -89,6 +89,17 @@ function CameraController({ geometry, orbitControlsRef, triggerHome }) {
     goToHomeView();
   }, [geometry, camera, orbitControlsRef, triggerHome]);
 
+  // Gérer le zoom via boutons
+  useEffect(() => {
+    if (zoomAction && orbitControlsRef.current) {
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      const zoomFactor = zoomAction === 'in' ? -30 : 30;
+      camera.position.addScaledVector(direction, zoomFactor);
+      camera.updateProjectionMatrix();
+    }
+  }, [zoomAction, camera, orbitControlsRef]);
+
   return null;
 }
 
@@ -111,10 +122,16 @@ function STLViewer({ fileData, onModelLoad }) {
   const [editingDim, setEditingDim] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [triggerHome, setTriggerHome] = useState(0);
+  const [zoomAction, setZoomAction] = useState(null);
   const orbitControlsRef = useRef();
 
   const handleHomeClick = () => {
     setTriggerHome(prev => prev + 1);
+  };
+
+  const handleZoom = (direction) => {
+    setZoomAction(direction);
+    setTimeout(() => setZoomAction(null), 50);
   };
 
   useEffect(() => {
@@ -227,6 +244,21 @@ function STLViewer({ fileData, onModelLoad }) {
         </button>
         <div className="toolbar-separator" />
         <button
+          className="toolbar-btn"
+          onClick={() => handleZoom('in')}
+          title="Zoom +"
+        >
+          <span>+</span>
+        </button>
+        <button
+          className="toolbar-btn"
+          onClick={() => handleZoom('out')}
+          title="Zoom -"
+        >
+          <span>−</span>
+        </button>
+        <div className="toolbar-separator" />
+        <button
           className={`toolbar-btn ${transformMode === 'translate' ? 'active' : ''}`}
           onClick={() => setTransformMode('translate')}
           title="Déplacer (G)"
@@ -295,6 +327,7 @@ function STLViewer({ fileData, onModelLoad }) {
           geometry={geometry}
           orbitControlsRef={orbitControlsRef}
           triggerHome={triggerHome}
+          zoomAction={zoomAction}
         />
 
         <BuildPlate size={gridSize} />
@@ -303,10 +336,12 @@ function STLViewer({ fileData, onModelLoad }) {
           ref={orbitControlsRef}
           makeDefault
           enablePan={true}
-          enableZoom={true}
+          enableZoom={false}
           enableRotate={true}
           minDistance={10}
           maxDistance={gridSize * 5}
+          enableDamping={true}
+          dampingFactor={0.05}
           mouseButtons={{
             LEFT: THREE.MOUSE.ROTATE,
             MIDDLE: THREE.MOUSE.DOLLY,
