@@ -2,7 +2,9 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, TransformControls, Environment } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
+import { STLExporter } from 'three/examples/jsm/exporters/STLExporter';
 import * as THREE from 'three';
+import { mm3ToCm3 } from '../utils/stlUtils';
 
 function Model({ geometry, transformMode, scale, onScaleChange }) {
   const meshRef = useRef();
@@ -114,16 +116,19 @@ function BuildPlate({ size }) {
   );
 }
 
-function STLViewer({ fileData, onModelLoad }) {
+function STLViewer({ fileData, onModelLoad, onScaleApply }) {
   const [geometry, setGeometry] = useState(null);
   const [transformMode, setTransformMode] = useState('translate');
   const [originalDimensions, setOriginalDimensions] = useState(null);
+  const [originalVolume, setOriginalVolume] = useState(0);
   const [scale, setScale] = useState(1);
+  const [appliedScale, setAppliedScale] = useState(1);
   const [editingDim, setEditingDim] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [triggerHome, setTriggerHome] = useState(0);
   const [zoomAction, setZoomAction] = useState(null);
   const orbitControlsRef = useRef();
+  const meshRef = useRef();
 
   const handleHomeClick = () => {
     setTriggerHome(prev => prev + 1);
@@ -162,6 +167,18 @@ function STLViewer({ fileData, onModelLoad }) {
       };
       setOriginalDimensions(dims);
       setScale(1);
+      setAppliedScale(1);
+
+      // Calculer le volume original
+      const position = geom.attributes.position;
+      let vol = 0;
+      for (let i = 0; i < position.count; i += 3) {
+        const v1 = { x: position.getX(i), y: position.getY(i), z: position.getZ(i) };
+        const v2 = { x: position.getX(i + 1), y: position.getY(i + 1), z: position.getZ(i + 1) };
+        const v3 = { x: position.getX(i + 2), y: position.getY(i + 2), z: position.getZ(i + 2) };
+        vol += (v1.x * (v2.y * v3.z - v3.y * v2.z) - v2.x * (v1.y * v3.z - v3.y * v1.z) + v3.x * (v1.y * v2.z - v2.y * v1.z)) / 6.0;
+      }
+      setOriginalVolume(Math.abs(vol));
 
       if (onModelLoad) {
         onModelLoad(geom);
@@ -176,6 +193,49 @@ function STLViewer({ fileData, onModelLoad }) {
   const resetScale = () => {
     setScale(1);
   };
+
+  const hasScaleChanged = scale !== appliedScale;
+
+  const handleApplyScale = useCallback(() => {
+    if (onScaleApply && originalDimensions && originalVolume) {
+      const newDimensions = {
+        x: originalDimensions.x * scale,
+        y: originalDimensions.y * scale,
+        z: originalDimensions.z * scale
+      };
+      // Volume scales by the cube of the scale factor
+      const newVolumeMm3 = originalVolume * Math.pow(scale, 3);
+      const newVolumeCm3 = mm3ToCm3(newVolumeMm3);
+
+      onScaleApply(newDimensions, newVolumeCm3);
+      setAppliedScale(scale);
+    }
+  }, [scale, originalDimensions, originalVolume, onScaleApply]);
+
+  const handleExportSTL = useCallback(() => {
+    if (!geometry) return;
+
+    // Créer une copie de la géométrie avec l'échelle appliquée
+    const scaledGeometry = geometry.clone();
+    scaledGeometry.scale(scale, scale, scale);
+
+    // Créer un mesh temporaire pour l'export
+    const tempMesh = new THREE.Mesh(scaledGeometry);
+
+    const exporter = new STLExporter();
+    const stlString = exporter.parse(tempMesh);
+
+    // Créer et télécharger le fichier
+    const blob = new Blob([stlString], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'model_scaled.stl';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [geometry, scale]);
 
   const currentDimensions = useMemo(() => {
     if (!originalDimensions) return null;
@@ -391,6 +451,25 @@ function STLViewer({ fileData, onModelLoad }) {
           <div className="dim-row scale-row">
             <span className="dim-label">Échelle</span>
             <span className="dim-value">{(scale * 100).toFixed(0)}%</span>
+          </div>
+
+          <div className="dimensions-actions">
+            {hasScaleChanged && (
+              <button className="apply-scale-btn" onClick={handleApplyScale}>
+                <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                  <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Appliquer
+              </button>
+            )}
+            <button className="export-stl-btn" onClick={handleExportSTL}>
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M7 10L12 15L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Exporter STL
+            </button>
           </div>
         </div>
       )}

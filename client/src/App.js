@@ -53,6 +53,11 @@ function App() {
     setVolume(mm3ToCm3(vol));
   }, []);
 
+  const handleScaleApply = useCallback((newDimensions, newVolumeCm3) => {
+    setDimensions(newDimensions);
+    setVolume(newVolumeCm3);
+  }, []);
+
   const handleReset = () => {
     setFileData(null);
     setFileName('');
@@ -248,7 +253,11 @@ function App() {
 
       <main className="app-main">
         <div className="viewer-section">
-          <STLViewer fileData={fileData} onModelLoad={handleModelLoad} />
+          <STLViewer
+            fileData={fileData}
+            onModelLoad={handleModelLoad}
+            onScaleApply={handleScaleApply}
+          />
         </div>
 
         <aside className="sidebar">
