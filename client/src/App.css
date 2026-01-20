@@ -70,9 +70,11 @@ body {
    App Layout
    ============================================ */
 .App {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh; /* Mobile viewport fix */
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ============================================
@@ -351,17 +353,28 @@ body {
 .app-main {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 400px;
   gap: var(--spacing-lg);
   padding: var(--spacing-lg);
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
+  min-height: 0; /* Important for flex child overflow */
+  overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+  .app-main {
+    grid-template-columns: 1fr 350px;
+  }
 }
 
 @media (max-width: 1024px) {
   .app-main {
     grid-template-columns: 1fr;
+    grid-template-rows: 50% 50%;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
   }
 }
 
@@ -370,13 +383,12 @@ body {
    ============================================ */
 .viewer-section {
   position: relative;
-  height: 500px;
-  max-height: 500px;
+  min-height: 0; /* Important for grid child overflow */
+  height: 100%;
 }
 
 .stl-viewer {
   height: 100%;
-  max-height: 500px;
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
@@ -386,7 +398,6 @@ body {
 
 .viewer-placeholder {
   height: 100%;
-  min-height: 500px;
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   border: 2px dashed var(--color-border);
@@ -697,6 +708,30 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  min-height: 0; /* Important for flex child overflow */
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
 }
 
 /* ============================================
