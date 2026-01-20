@@ -36,7 +36,7 @@ function OrderSuccess({ orderDetails, onNewOrder }) {
           <h3>Prochaines étapes</h3>
           <ol>
             <li>Vous recevrez un email de confirmation</li>
-            <li>Votre pièce sera imprimée sous 24h</li>
+            <li>Votre commande sera traitée sous 24h</li>
             <li>Un email de suivi vous sera envoyé à l'expédition</li>
           </ol>
         </div>

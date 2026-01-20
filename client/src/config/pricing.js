@@ -42,6 +42,12 @@ export const FDM_CONFIG = {
     }
   ],
 
+  // Couleurs disponibles
+  colors: [
+    { id: 'noir', name: 'Noir', hex: '#1a1a1a' },
+    { id: 'blanc', name: 'Blanc', hex: '#f5f5f5' }
+  ],
+
   // Niveaux de qualité
   qualities: [
     {
@@ -84,14 +90,12 @@ export const SLA_CONFIG = {
       color: '#8b5cf6',      // Couleur d'affichage (violet)
       desc: 'Polyvalente, finition lisse'
     }
-    // Vous pouvez ajouter d'autres résines ici :
-    // {
-    //   id: 'tough',
-    //   name: 'Résine Tough',
-    //   price: 0.18,
-    //   color: '#ef4444',
-    //   desc: 'Haute résistance mécanique'
-    // }
+  ],
+
+  // Couleurs disponibles
+  colors: [
+    { id: 'blanc', name: 'Blanc', hex: '#f5f5f5' },
+    { id: 'gris', name: 'Gris', hex: '#9ca3af' }
   ],
 
   // Niveaux de qualité
@@ -157,7 +161,7 @@ export const DELIVERY_CONFIG = {
     },
     {
       id: 'urgent',
-      name: 'Urgent',
+      name: 'Moins de 3 jours',
       delay: '24-48h',
       icon: 'lightning',
       multiplier: 1.5,         // +50% du prix impression
@@ -182,7 +186,8 @@ export const TECHNOLOGIES = {
     description: 'Prototypage, pièces fonctionnelles',
     maxSize: FDM_CONFIG.maxSize,
     materials: FDM_CONFIG.materials,
-    qualities: FDM_CONFIG.qualities
+    qualities: FDM_CONFIG.qualities,
+    colors: FDM_CONFIG.colors
   },
   SLA: {
     id: 'sla',
@@ -190,7 +195,8 @@ export const TECHNOLOGIES = {
     description: 'Finition premium, haute précision',
     maxSize: SLA_CONFIG.maxSize,
     materials: SLA_CONFIG.materials,
-    qualities: SLA_CONFIG.qualities
+    qualities: SLA_CONFIG.qualities,
+    colors: SLA_CONFIG.colors
   }
 };
 

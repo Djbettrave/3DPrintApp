@@ -50,10 +50,15 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
   const [selectedTech, setSelectedTech] = useState('FDM');
   const [selectedMaterial, setSelectedMaterial] = useState('PLA');
   const [selectedQuality, setSelectedQuality] = useState('normal');
-  const [postProcessing, setPostProcessing] = useState(false);
+  const [selectedColor, setSelectedColor] = useState('noir');
+  const [quantity, setQuantity] = useState(1);
+  const [finishType, setFinishType] = useState('brut'); // 'brut' ou 'pro'
   const [selectedDelivery, setSelectedDelivery] = useState('standard');
 
   const tech = TECHNOLOGIES[selectedTech];
+
+  // Vérifier si devis sur demande (finition pro OU délai urgent)
+  const isQuoteRequest = finishType === 'pro' || selectedDelivery === 'urgent';
 
   // Vérifier si les dimensions dépassent la limite
   const isOversized = useMemo(() => {
@@ -62,17 +67,18 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
     return dimensions.x > maxSize.x || dimensions.y > maxSize.y || dimensions.z > maxSize.z;
   }, [dimensions, tech.maxSize]);
 
-  // Réinitialiser le matériau et la qualité quand on change de techno
+  // Réinitialiser le matériau, qualité et couleur quand on change de techno
   useEffect(() => {
     const newTech = TECHNOLOGIES[selectedTech];
     setSelectedMaterial(newTech.materials[0].id);
     setSelectedQuality('normal');
+    setSelectedColor(newTech.colors[0].id);
   }, [selectedTech]);
 
   // Calculer le prix
   const priceDetails = useMemo(() => {
-    if (!volume || volume <= 0 || isOversized) {
-      return { printPrice: 0, finishingPrice: 0, deliveryExtra: 0, totalPrice: 0 };
+    if (!volume || volume <= 0 || isOversized || isQuoteRequest) {
+      return { printPrice: 0, deliveryExtra: 0, totalPrice: 0, unitPrice: 0 };
     }
 
     const material = tech.materials.find(m => m.id === selectedMaterial);
@@ -80,33 +86,31 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
     const delivery = DELIVERY_OPTIONS.find(d => d.id === selectedDelivery);
 
     if (!material || !quality || !delivery) {
-      return { printPrice: 0, finishingPrice: 0, deliveryExtra: 0, totalPrice: 0 };
+      return { printPrice: 0, deliveryExtra: 0, totalPrice: 0, unitPrice: 0 };
     }
 
-    // Prix de base impression
-    const printPrice = volume * material.price * quality.multiplier;
+    // Prix de base impression (pour 1 pièce)
+    const unitPrice = volume * material.price * quality.multiplier;
 
-    // Finition
-    const finishingPrice = postProcessing
-      ? (volume < POST_PROCESSING.smallThreshold ? POST_PROCESSING.smallPrice : POST_PROCESSING.largePrice)
-      : 0;
+    // Prix total impression (quantité)
+    const printPrice = unitPrice * quantity;
 
-    // Surcoût délai (% du prix impression uniquement)
+    // Surcoût délai (% du prix impression)
     const deliveryExtra = printPrice * (delivery.multiplier - 1);
 
     // Total
-    const totalPrice = printPrice + finishingPrice + deliveryExtra;
+    const totalPrice = printPrice + deliveryExtra;
 
     return {
       printPrice,
-      finishingPrice,
       deliveryExtra,
       totalPrice,
+      unitPrice,
       deliveryMultiplier: delivery.multiplier
     };
-  }, [volume, selectedTech, selectedMaterial, selectedQuality, postProcessing, selectedDelivery, tech, isOversized]);
+  }, [volume, selectedTech, selectedMaterial, selectedQuality, quantity, selectedDelivery, tech, isOversized, isQuoteRequest]);
 
-  // Générer le lien mailto
+  // Générer le lien mailto (hors gabarit)
   const generateMailtoLink = () => {
     const subject = encodeURIComponent('Devis pièce hors gabarit');
     const body = encodeURIComponent(
@@ -122,18 +126,60 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
     return `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
   };
 
+  // Générer le lien mailto (devis sur demande)
+  const generateQuoteMailtoLink = () => {
+    const selectedMat = tech.materials.find(m => m.id === selectedMaterial);
+    const selectedQual = tech.qualities.find(q => q.id === selectedQuality);
+    const selectedCol = tech.colors.find(c => c.id === selectedColor);
+
+    const isUrgent = selectedDelivery === 'urgent';
+    const isPro = finishType === 'pro';
+
+    let reason = '';
+    if (isUrgent && isPro) {
+      reason = 'Délai ultra rapide + Finition professionnelle';
+    } else if (isUrgent) {
+      reason = 'Délai ultra rapide (moins de 3 jours)';
+    } else {
+      reason = 'Finition professionnelle';
+    }
+
+    const subject = encodeURIComponent(`Demande de devis - ${reason}`);
+    const body = encodeURIComponent(
+      `Bonjour,\n\nJe souhaite obtenir un devis pour : ${reason}\n\n` +
+      `Dimensions du modèle:\n` +
+      `- X: ${dimensions?.x?.toFixed(1) || '?'} mm\n` +
+      `- Y: ${dimensions?.y?.toFixed(1) || '?'} mm\n` +
+      `- Z: ${dimensions?.z?.toFixed(1) || '?'} mm\n` +
+      `- Volume: ${volume?.toFixed(2) || '?'} cm³\n\n` +
+      `Configuration:\n` +
+      `- Technologie: ${tech.name}\n` +
+      `- Matériau: ${selectedMat?.name || '?'}\n` +
+      `- Qualité: ${selectedQual?.name || '?'}\n` +
+      `- Couleur: ${selectedCol?.name || '?'}\n` +
+      `- Quantité: ${quantity}\n` +
+      `- Finition: ${isPro ? 'Professionnelle' : 'Brut d\'impression'}\n` +
+      `- Délai: ${isUrgent ? 'Moins de 3 jours' : 'Standard/Express'}\n\n` +
+      `Merci de me recontacter.\n\nCordialement`
+    );
+    return `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+  };
+
   // Handler pour le checkout
   const handleCheckout = () => {
     if (onCheckout) {
       const selectedMat = tech.materials.find(m => m.id === selectedMaterial);
       const selectedQual = tech.qualities.find(q => q.id === selectedQuality);
+      const selectedCol = tech.colors.find(c => c.id === selectedColor);
       const selectedDel = DELIVERY_OPTIONS.find(d => d.id === selectedDelivery);
 
       onCheckout({
         technology: selectedTech,
         material: selectedMat,
         quality: selectedQual,
-        postProcessing,
+        color: selectedCol,
+        quantity,
+        finishType,
         delivery: selectedDel,
         volume,
         dimensions,
@@ -142,12 +188,18 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
     }
   };
 
+  // Quantité handlers
+  const handleQuantityChange = (delta) => {
+    setQuantity(prev => Math.max(1, prev + delta));
+  };
+
   if (!volume) {
     return null;
   }
 
   const selectedMat = tech.materials.find(m => m.id === selectedMaterial);
   const selectedQual = tech.qualities.find(q => q.id === selectedQuality);
+  const selectedCol = tech.colors.find(c => c.id === selectedColor);
   const selectedDel = DELIVERY_OPTIONS.find(d => d.id === selectedDelivery);
 
   return (
@@ -252,30 +304,70 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
               </div>
             </div>
 
-            {/* Post-traitement */}
+            {/* Sélection de la couleur */}
             <div className="option-group">
-              <label className="option-label">Finition</label>
-              <div className="post-processing-toggle">
+              <label className="option-label">Couleur</label>
+              <div className="color-options">
+                {tech.colors.map((color) => (
+                  <button
+                    key={color.id}
+                    className={`color-option ${selectedColor === color.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedColor(color.id)}
+                    title={color.name}
+                  >
+                    <span
+                      className="color-swatch"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    <span className="color-name">{color.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sélection de la quantité */}
+            <div className="option-group">
+              <label className="option-label">Quantité</label>
+              <div className="quantity-selector">
                 <button
-                  className={`post-processing-option ${!postProcessing ? 'selected' : ''}`}
-                  onClick={() => setPostProcessing(false)}
+                  className="quantity-btn"
+                  onClick={() => handleQuantityChange(-1)}
+                  disabled={quantity <= 1}
                 >
-                  <span className="post-processing-title">Sans finition</span>
-                  <span className="post-processing-price">Inclus</span>
+                  −
                 </button>
+                <span className="quantity-value">{quantity}</span>
                 <button
-                  className={`post-processing-option ${postProcessing ? 'selected' : ''}`}
-                  onClick={() => setPostProcessing(true)}
+                  className="quantity-btn"
+                  onClick={() => handleQuantityChange(1)}
                 >
-                  <span className="post-processing-title">Ponçage + Apprêt</span>
-                  <span className="post-processing-price">
-                    +{volume < POST_PROCESSING.smallThreshold ? POST_PROCESSING.smallPrice : POST_PROCESSING.largePrice}€
-                  </span>
+                  +
                 </button>
               </div>
-              {postProcessing && (
-                <p className="post-processing-info">
-                  Surface poncée et apprêtée, prête à peindre
+            </div>
+
+            {/* Finition */}
+            <div className="option-group">
+              <label className="option-label">Finition</label>
+              <div className="finish-toggle">
+                <button
+                  className={`finish-option ${finishType === 'brut' ? 'selected' : ''}`}
+                  onClick={() => setFinishType('brut')}
+                >
+                  <span className="finish-title">Brut d'impression</span>
+                  <span className="finish-price">Prix calculé</span>
+                </button>
+                <button
+                  className={`finish-option ${finishType === 'pro' ? 'selected' : ''}`}
+                  onClick={() => setFinishType('pro')}
+                >
+                  <span className="finish-title">Finition professionnelle</span>
+                  <span className="finish-price">Devis sur demande</span>
+                </button>
+              </div>
+              {finishType === 'pro' && (
+                <p className="finish-info">
+                  Finition professionnelle : devis sur demande. On revient vers vous sous 24h.
                 </p>
               )}
             </div>
@@ -287,56 +379,96 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
                 {DELIVERY_OPTIONS.map((option) => (
                   <button
                     key={option.id}
-                    className={`delivery-option ${selectedDelivery === option.id ? 'selected' : ''}`}
+                    className={`delivery-option ${selectedDelivery === option.id ? 'selected' : ''} ${option.id === 'urgent' ? 'delivery-option--urgent' : ''}`}
                     onClick={() => setSelectedDelivery(option.id)}
                   >
                     <DeliveryIcon type={option.icon} />
                     <div className="delivery-option-content">
                       <span className="delivery-option-name">{option.name}</span>
-                      <span className="delivery-option-delay">{option.delay}</span>
+                      {option.id !== 'urgent' && (
+                        <span className="delivery-option-delay">{option.delay}</span>
+                      )}
                     </div>
-                    <span className="delivery-option-price">
-                      {option.multiplier === 1 ? 'Inclus' : `+${Math.round((option.multiplier - 1) * 100)}%`}
-                    </span>
+                    {option.id === 'urgent' ? (
+                      <span className="delivery-option-price">Sur devis</span>
+                    ) : (
+                      <span className="delivery-option-price">
+                        {option.multiplier === 1 ? 'Inclus' : ''}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
+              {selectedDelivery === 'urgent' && (
+                <p className="delivery-urgent-info">
+                  Moins de 3 jours : sur devis. On revient vers vous sous 24h.
+                </p>
+              )}
             </div>
 
             {/* Résumé du prix */}
             <div className="price-summary">
-              <div className="price-details">
-                <div className="price-line">
-                  <span>Impression ({selectedMat?.name}, {selectedQual?.name})</span>
-                  <span>{priceDetails.printPrice.toFixed(2)}€</span>
-                </div>
-                {postProcessing && (
-                  <div className="price-line">
-                    <span>Finition</span>
-                    <span>+{priceDetails.finishingPrice.toFixed(2)}€</span>
+              {isQuoteRequest ? (
+                <>
+                  <div className="quote-request-message">
+                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M12 8V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M12 16H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    <p>
+                      {selectedDelivery === 'urgent' && finishType === 'pro'
+                        ? 'Délai ultra rapide + Finition professionnelle sélectionnés.'
+                        : selectedDelivery === 'urgent'
+                        ? 'Délai ultra rapide sélectionné.'
+                        : 'Finition professionnelle sélectionnée.'}
+                      <br/>Devis personnalisé sous 24h.
+                    </p>
                   </div>
-                )}
-                {priceDetails.deliveryExtra > 0 && (
-                  <div className="price-line">
-                    <span>Délai {selectedDel?.name}</span>
-                    <span>+{priceDetails.deliveryExtra.toFixed(2)}€</span>
+                  <a href={generateQuoteMailtoLink()} className="checkout-btn checkout-btn--quote">
+                    <svg viewBox="0 0 24 24" fill="none" className="checkout-icon">
+                      <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M22 6L12 13L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Demander un devis
+                  </a>
+                </>
+              ) : (
+                <>
+                  <div className="price-details">
+                    <div className="price-line">
+                      <span>Impression ({selectedMat?.name}, {selectedQual?.name})</span>
+                      <span>{priceDetails.unitPrice.toFixed(2)}€</span>
+                    </div>
+                    {quantity > 1 && (
+                      <div className="price-line">
+                        <span>× {quantity} pièces</span>
+                        <span>{priceDetails.printPrice.toFixed(2)}€</span>
+                      </div>
+                    )}
+                    {priceDetails.deliveryExtra > 0 && (
+                      <div className="price-line">
+                        <span>Délai {selectedDel?.name}</span>
+                        <span>+{priceDetails.deliveryExtra.toFixed(2)}€</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="price-total">
-                <span className="price-total-label">Total</span>
-                <span className="price-total-value">{priceDetails.totalPrice.toFixed(2)} €</span>
-              </div>
+                  <div className="price-total">
+                    <span className="price-total-label">Total</span>
+                    <span className="price-total-value">{priceDetails.totalPrice.toFixed(2)} €</span>
+                  </div>
 
-              <button className="checkout-btn" onClick={handleCheckout}>
-                <svg viewBox="0 0 24 24" fill="none" className="checkout-icon">
-                  <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Commander
-              </button>
+                  <button className="checkout-btn" onClick={handleCheckout}>
+                    <svg viewBox="0 0 24 24" fill="none" className="checkout-icon">
+                      <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Commander
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}

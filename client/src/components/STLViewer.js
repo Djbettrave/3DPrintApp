@@ -129,6 +129,22 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
   const [zoomAction, setZoomAction] = useState(null);
   const orbitControlsRef = useRef();
   const meshRef = useRef();
+  const viewerRef = useRef();
+
+  // Bloquer le scroll de la page quand la souris est sur le viewer
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+    };
+
+    viewer.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      viewer.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   const handleHomeClick = () => {
     setTriggerHome(prev => prev + 1);
@@ -293,29 +309,14 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
   }
 
   return (
-    <div className="stl-viewer">
+    <div className="stl-viewer" ref={viewerRef}>
       <div className="viewer-toolbar">
         <button
           className="toolbar-btn home-btn"
           onClick={handleHomeClick}
           title="Vue Home (H)"
         >
-          <span>Home</span>
-        </button>
-        <div className="toolbar-separator" />
-        <button
-          className="toolbar-btn"
-          onClick={() => handleZoom('in')}
-          title="Zoom +"
-        >
-          <span>+</span>
-        </button>
-        <button
-          className="toolbar-btn"
-          onClick={() => handleZoom('out')}
-          title="Zoom -"
-        >
-          <span>−</span>
+          <span>Home vue</span>
         </button>
         <div className="toolbar-separator" />
         <button
@@ -396,12 +397,13 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
           ref={orbitControlsRef}
           makeDefault
           enablePan={true}
-          enableZoom={false}
+          enableZoom={true}
           enableRotate={true}
           minDistance={10}
           maxDistance={gridSize * 5}
           enableDamping={true}
           dampingFactor={0.05}
+          zoomSpeed={1.2}
           mouseButtons={{
             LEFT: THREE.MOUSE.ROTATE,
             MIDDLE: THREE.MOUSE.DOLLY,

@@ -8,6 +8,7 @@ import ModelInfo from './components/ModelInfo';
 import PriceCalculator from './components/PriceCalculator';
 import Checkout from './components/Checkout';
 import OrderSuccess from './components/OrderSuccess';
+import NoModelSection from './components/NoModelSection';
 import { calculateVolume, calculateDimensions, mm3ToCm3 } from './utils/stlUtils';
 
 // Clé publique Stripe (remplacez par votre clé en production)
@@ -178,6 +179,9 @@ function App() {
               </div>
             </div>
           </section>
+
+          {/* No Model Section */}
+          <NoModelSection />
 
           {/* Upload Zone */}
           <section className="landing-upload">
