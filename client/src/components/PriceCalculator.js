@@ -46,7 +46,7 @@ const DeliveryIcon = ({ type }) => {
   );
 };
 
-function PriceCalculator({ volume, dimensions, onCheckout }) {
+function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'ALLOWED' }) {
   const [selectedTech, setSelectedTech] = useState('FDM');
   const [selectedMaterial, setSelectedMaterial] = useState('PLA');
   const [selectedQuality, setSelectedQuality] = useState('normal');
@@ -57,8 +57,11 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
 
   const tech = TECHNOLOGIES[selectedTech];
 
-  // Vérifier si devis sur demande (finition pro OU délai urgent)
-  const isQuoteRequest = finishType === 'pro' || selectedDelivery === 'urgent';
+  // Vérifier si devis sur demande forcé par le flow (STL non conforme)
+  const isSTLQuoteOnly = quoteEligibility === 'QUOTE_ONLY';
+
+  // Vérifier si devis sur demande (finition pro OU délai urgent OU STL non conforme)
+  const isQuoteRequest = finishType === 'pro' || selectedDelivery === 'urgent' || isSTLQuoteOnly;
 
   // Vérifier si les dimensions dépassent la limite
   const isOversized = useMemo(() => {
@@ -136,7 +139,15 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
     const isPro = finishType === 'pro';
 
     let reason = '';
-    if (isUrgent && isPro) {
+    if (isSTLQuoteOnly && isUrgent && isPro) {
+      reason = 'STL nécessitant vérification + Délai ultra rapide + Finition professionnelle';
+    } else if (isSTLQuoteOnly && isUrgent) {
+      reason = 'STL nécessitant vérification + Délai ultra rapide';
+    } else if (isSTLQuoteOnly && isPro) {
+      reason = 'STL nécessitant vérification + Finition professionnelle';
+    } else if (isSTLQuoteOnly) {
+      reason = 'STL nécessitant vérification manuelle';
+    } else if (isUrgent && isPro) {
       reason = 'Délai ultra rapide + Finition professionnelle';
     } else if (isUrgent) {
       reason = 'Délai ultra rapide (moins de 3 jours)';
@@ -417,7 +428,9 @@ function PriceCalculator({ volume, dimensions, onCheckout }) {
                       <path d="M12 16H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
                     <p>
-                      {selectedDelivery === 'urgent' && finishType === 'pro'
+                      {isSTLQuoteOnly
+                        ? 'Votre fichier STL nécessite une vérification manuelle.'
+                        : selectedDelivery === 'urgent' && finishType === 'pro'
                         ? 'Délai ultra rapide + Finition professionnelle sélectionnés.'
                         : selectedDelivery === 'urgent'
                         ? 'Délai ultra rapide sélectionné.'
