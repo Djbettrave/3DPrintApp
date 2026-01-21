@@ -6,30 +6,61 @@ import { STLExporter } from 'three/examples/jsm/exporters/STLExporter';
 import * as THREE from 'three';
 import { mm3ToCm3 } from '../utils/stlUtils';
 
-function Model({ geometry, transformMode, scale, onScaleChange }) {
+// === FLAG SÉCURITÉ : mettre à false pour revenir à l'ancien comportement ===
+const ENABLE_AUTO_FIT = true;
+
+function Model({
+  geometry,
+  transformMode,
+  scale,
+  onScaleChange,
+  onPoseChange,
+  initialPose,
+  resetPoseTrigger
+}) {
   const meshRef = useRef();
   const transformRef = useRef();
 
+  // Appliquer le scale
   useEffect(() => {
     if (meshRef.current) {
       meshRef.current.scale.set(scale, scale, scale);
     }
   }, [scale]);
 
+  // Reset pose quand déclenché
+  useEffect(() => {
+    if (meshRef.current && initialPose && resetPoseTrigger > 0) {
+      meshRef.current.position.copy(initialPose.position);
+      meshRef.current.rotation.copy(initialPose.rotation);
+    }
+  }, [resetPoseTrigger, initialPose]);
+
+  // Écouter les changements de transformation
   useEffect(() => {
     if (transformRef.current) {
       const controls = transformRef.current;
       const callback = () => {
-        if (meshRef.current && onScaleChange) {
-          const s = meshRef.current.scale;
-          const uniformScale = (s.x + s.y + s.z) / 3;
-          onScaleChange(uniformScale);
+        if (meshRef.current) {
+          // Notifier les changements de scale
+          if (onScaleChange) {
+            const s = meshRef.current.scale;
+            const uniformScale = (s.x + s.y + s.z) / 3;
+            onScaleChange(uniformScale);
+          }
+          // Notifier les changements de pose (position/rotation)
+          if (onPoseChange) {
+            onPoseChange({
+              position: meshRef.current.position.clone(),
+              rotation: meshRef.current.rotation.clone()
+            });
+          }
         }
       };
       controls.addEventListener('change', callback);
       return () => controls.removeEventListener('change', callback);
     }
-  }, [onScaleChange]);
+  }, [onScaleChange, onPoseChange]);
 
   return (
     <>
@@ -55,41 +86,63 @@ function Model({ geometry, transformMode, scale, onScaleChange }) {
   );
 }
 
-function CameraController({ geometry, orbitControlsRef, triggerHome, zoomAction }) {
+function CameraController({ geometry, orbitControlsRef, triggerHome, zoomAction, scale, cameraRefitTrigger }) {
   const { camera } = useThree();
 
+  // Auto-fit caméra avec near/far dynamiques
+  // === BUG 3 FIX : déclenché par triggerHome, cameraRefitTrigger, ou changement de geometry ===
   useEffect(() => {
     const goToHomeView = () => {
-      if (geometry && geometry.boundingBox && orbitControlsRef.current) {
-        const box = geometry.boundingBox;
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        const center = new THREE.Vector3();
-        box.getCenter(center);
+      if (!geometry || !geometry.boundingBox || !orbitControlsRef.current) return;
 
-        const maxDim = Math.max(size.x, size.y, size.z);
+      const box = geometry.boundingBox.clone();
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
 
-        // Distance basée sur le FOV pour bien cadrer le modèle
-        const fov = camera.fov * (Math.PI / 180);
-        const distance = (maxDim / 2) / Math.tan(fov / 2) * 1.5;
+      // Prendre en compte l'échelle actuelle
+      const scaledSize = size.clone().multiplyScalar(scale);
+      const maxDim = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
 
-        // Position caméra: vue 3/4 isométrique
-        camera.position.set(
-          center.x + distance * 0.7,
-          center.y + distance * 0.5,
-          center.z + distance * 0.7
-        );
+      // Protection contre les modèles trop petits ou mal définis
+      const safeMaxDim = Math.max(maxDim, 1);
 
-        // Cibler le centre du modèle
-        orbitControlsRef.current.target.set(center.x, center.y, center.z);
-        orbitControlsRef.current.update();
+      // Distance basée sur le FOV pour bien cadrer le modèle
+      const fov = camera.fov * (Math.PI / 180);
+      const distance = (safeMaxDim / 2) / Math.tan(fov / 2) * 2.0;
 
-        camera.updateProjectionMatrix();
+      // Position caméra: vue 3/4 isométrique
+      camera.position.set(
+        center.x + distance * 0.7,
+        center.y + distance * 0.5,
+        center.z + distance * 0.7
+      );
+
+      // === AUTO-FIT : near/far dynamiques basés sur la taille du modèle ===
+      if (ENABLE_AUTO_FIT) {
+        // Near: assez proche pour les petits modèles, mais pas trop pour éviter le clipping
+        const nearClip = Math.max(0.1, safeMaxDim * 0.001);
+        // Far: assez loin pour les grands modèles (10x la distance de vue)
+        const farClip = Math.max(distance * 10, safeMaxDim * 20);
+
+        camera.near = nearClip;
+        camera.far = farClip;
+
+        // Mettre à jour les limites de distance des contrôles
+        orbitControlsRef.current.minDistance = safeMaxDim * 0.1;
+        orbitControlsRef.current.maxDistance = distance * 5;
       }
+
+      // Cibler le centre du modèle
+      orbitControlsRef.current.target.set(center.x, center.y, center.z);
+      orbitControlsRef.current.update();
+
+      camera.updateProjectionMatrix();
     };
 
     goToHomeView();
-  }, [geometry, camera, orbitControlsRef, triggerHome]);
+  }, [geometry, camera, orbitControlsRef, triggerHome, scale, cameraRefitTrigger]);
 
   // Gérer le zoom via boutons
   useEffect(() => {
@@ -127,6 +180,12 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
   const [editValue, setEditValue] = useState('');
   const [triggerHome, setTriggerHome] = useState(0);
   const [zoomAction, setZoomAction] = useState(null);
+  // === BUG 1 FIX : flag fiable pour pose modifiée ===
+  const [initialPose, setInitialPose] = useState(null);
+  const [poseModified, setPoseModified] = useState(false);
+  const [resetPoseTrigger, setResetPoseTrigger] = useState(0);
+  // === BUG 3 FIX : trigger pour refit caméra après changement de scale ===
+  const [cameraRefitTrigger, setCameraRefitTrigger] = useState(0);
   const orbitControlsRef = useRef();
   const meshRef = useRef();
   const viewerRef = useRef();
@@ -154,6 +213,20 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
     setZoomAction(direction);
     setTimeout(() => setZoomAction(null), 50);
   };
+
+  // === BUG 1 FIX : réinitialiser position et rotation ===
+  const handleResetPose = () => {
+    setResetPoseTrigger(prev => prev + 1);
+    setPoseModified(false);
+    // Déclencher aussi un refit caméra pour recentrer la vue
+    setCameraRefitTrigger(prev => prev + 1);
+  };
+
+  // Callback pour les changements de pose (translate ou rotate)
+  const handlePoseChange = useCallback(() => {
+    // Marquer la pose comme modifiée dès qu'il y a un changement
+    setPoseModified(true);
+  }, []);
 
   useEffect(() => {
     if (fileData) {
@@ -185,6 +258,16 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
       setScale(1);
       setAppliedScale(1);
 
+      // === BUG 1 FIX : stocker la pose initiale ===
+      const initPose = {
+        position: new THREE.Vector3(0, 0, 0),
+        rotation: new THREE.Euler(0, 0, 0)
+      };
+      setInitialPose(initPose);
+      setPoseModified(false);
+      setResetPoseTrigger(0);
+      setCameraRefitTrigger(0);
+
       // Calculer le volume original
       const position = geom.attributes.position;
       let vol = 0;
@@ -206,12 +289,23 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
     setScale(newScale);
   }, []);
 
+  // === BUG 2 FIX : suppression auto-sync, le bouton "Appliquer" reste visible ===
+  // L'utilisateur doit cliquer "Appliquer" pour valider les changements
+
+  // === BUG 3 FIX : resetScale déclenche aussi le refit caméra ===
   const resetScale = () => {
     setScale(1);
+    // Appliquer immédiatement le reset et déclencher le refit caméra
+    if (onScaleApply && originalDimensions && originalVolume) {
+      onScaleApply(originalDimensions, mm3ToCm3(originalVolume));
+      setAppliedScale(1);
+    }
+    setCameraRefitTrigger(prev => prev + 1);
   };
 
   const hasScaleChanged = scale !== appliedScale;
 
+  // === BUG 2 & 3 FIX : appliquer le scale et déclencher refit caméra ===
   const handleApplyScale = useCallback(() => {
     if (onScaleApply && originalDimensions && originalVolume) {
       const newDimensions = {
@@ -225,6 +319,8 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
 
       onScaleApply(newDimensions, newVolumeCm3);
       setAppliedScale(scale);
+      // Déclencher le refit caméra après application
+      setCameraRefitTrigger(prev => prev + 1);
     }
   }, [scale, originalDimensions, originalVolume, onScaleApply]);
 
@@ -340,6 +436,19 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
         >
           <span>Échelle</span>
         </button>
+        <div className="toolbar-separator" />
+        <button
+          className={`toolbar-btn reset-pose-btn ${poseModified ? 'has-changes' : ''}`}
+          onClick={handleResetPose}
+          title="Réinitialiser position et rotation"
+          disabled={!poseModified}
+        >
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+            <path d="M3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12C21 16.9706 16.9706 21 12 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M3 12L6 9M3 12L6 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>Reset Pose</span>
+        </button>
       </div>
 
       <Canvas
@@ -382,6 +491,9 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
           transformMode={transformMode}
           scale={scale}
           onScaleChange={handleScaleChange}
+          onPoseChange={handlePoseChange}
+          initialPose={initialPose}
+          resetPoseTrigger={resetPoseTrigger}
         />
 
         <CameraController
@@ -389,6 +501,8 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
           orbitControlsRef={orbitControlsRef}
           triggerHome={triggerHome}
           zoomAction={zoomAction}
+          scale={scale}
+          cameraRefitTrigger={cameraRefitTrigger}
         />
 
         <BuildPlate size={gridSize} />

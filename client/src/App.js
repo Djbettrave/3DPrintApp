@@ -54,6 +54,82 @@ function App() {
     setVolume(mm3ToCm3(vol));
   }, []);
 
+  // Charger un cube de démonstration (50x50x50mm)
+  const handleDemoLoad = useCallback(() => {
+    // Créer un cube STL binaire simple de 50x50x50mm
+    const size = 50; // mm
+    const halfSize = size / 2;
+
+    // Définir les 12 triangles d'un cube (2 par face)
+    const triangles = [
+      // Face avant (z = halfSize)
+      [[-halfSize, -halfSize, halfSize], [halfSize, -halfSize, halfSize], [halfSize, halfSize, halfSize], [0, 0, 1]],
+      [[-halfSize, -halfSize, halfSize], [halfSize, halfSize, halfSize], [-halfSize, halfSize, halfSize], [0, 0, 1]],
+      // Face arrière (z = -halfSize)
+      [[halfSize, -halfSize, -halfSize], [-halfSize, -halfSize, -halfSize], [-halfSize, halfSize, -halfSize], [0, 0, -1]],
+      [[halfSize, -halfSize, -halfSize], [-halfSize, halfSize, -halfSize], [halfSize, halfSize, -halfSize], [0, 0, -1]],
+      // Face droite (x = halfSize)
+      [[halfSize, -halfSize, halfSize], [halfSize, -halfSize, -halfSize], [halfSize, halfSize, -halfSize], [1, 0, 0]],
+      [[halfSize, -halfSize, halfSize], [halfSize, halfSize, -halfSize], [halfSize, halfSize, halfSize], [1, 0, 0]],
+      // Face gauche (x = -halfSize)
+      [[-halfSize, -halfSize, -halfSize], [-halfSize, -halfSize, halfSize], [-halfSize, halfSize, halfSize], [-1, 0, 0]],
+      [[-halfSize, -halfSize, -halfSize], [-halfSize, halfSize, halfSize], [-halfSize, halfSize, -halfSize], [-1, 0, 0]],
+      // Face haut (y = halfSize)
+      [[-halfSize, halfSize, halfSize], [halfSize, halfSize, halfSize], [halfSize, halfSize, -halfSize], [0, 1, 0]],
+      [[-halfSize, halfSize, halfSize], [halfSize, halfSize, -halfSize], [-halfSize, halfSize, -halfSize], [0, 1, 0]],
+      // Face bas (y = -halfSize)
+      [[-halfSize, -halfSize, -halfSize], [halfSize, -halfSize, -halfSize], [halfSize, -halfSize, halfSize], [0, -1, 0]],
+      [[-halfSize, -halfSize, -halfSize], [halfSize, -halfSize, halfSize], [-halfSize, -halfSize, halfSize], [0, -1, 0]],
+    ];
+
+    // Créer le buffer STL binaire
+    const numTriangles = triangles.length;
+    const bufferSize = 84 + (numTriangles * 50); // header(80) + numTriangles(4) + triangles(50 each)
+    const buffer = new ArrayBuffer(bufferSize);
+    const dataView = new DataView(buffer);
+
+    // Header (80 bytes) - peut être vide
+    for (let i = 0; i < 80; i++) {
+      dataView.setUint8(i, 0);
+    }
+
+    // Nombre de triangles (4 bytes, little endian)
+    dataView.setUint32(80, numTriangles, true);
+
+    // Écrire chaque triangle
+    let offset = 84;
+    triangles.forEach(tri => {
+      const [v1, v2, v3, normal] = tri;
+
+      // Normal (3 floats)
+      dataView.setFloat32(offset, normal[0], true); offset += 4;
+      dataView.setFloat32(offset, normal[1], true); offset += 4;
+      dataView.setFloat32(offset, normal[2], true); offset += 4;
+
+      // Vertex 1
+      dataView.setFloat32(offset, v1[0], true); offset += 4;
+      dataView.setFloat32(offset, v1[1], true); offset += 4;
+      dataView.setFloat32(offset, v1[2], true); offset += 4;
+
+      // Vertex 2
+      dataView.setFloat32(offset, v2[0], true); offset += 4;
+      dataView.setFloat32(offset, v2[1], true); offset += 4;
+      dataView.setFloat32(offset, v2[2], true); offset += 4;
+
+      // Vertex 3
+      dataView.setFloat32(offset, v3[0], true); offset += 4;
+      dataView.setFloat32(offset, v3[1], true); offset += 4;
+      dataView.setFloat32(offset, v3[2], true); offset += 4;
+
+      // Attribute byte count (2 bytes)
+      dataView.setUint16(offset, 0, true); offset += 2;
+    });
+
+    setFileData(buffer);
+    setFileName('cube_demo_50mm.stl');
+    setOriginalFile(null);
+  }, []);
+
   const handleScaleApply = useCallback((newDimensions, newVolumeCm3) => {
     setDimensions(newDimensions);
     setVolume(newVolumeCm3);
@@ -113,17 +189,11 @@ function App() {
   // Mode Landing (pas de fichier chargé)
   if (!fileData) {
     return (
-      <div className="App">
+      <div className="App App--scrollable">
         <header className="app-header">
           <div className="header-content">
             <div className="logo">
-              <div className="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
+              <img src="/logo.svg" alt="Logo" className="logo-img" />
               <div className="logo-text">
                 <h1>Devis Impression 3D</h1>
                 <p>FDM & Résine - Prix instantané</p>
@@ -180,13 +250,13 @@ function App() {
             </div>
           </section>
 
-          {/* No Model Section */}
-          <NoModelSection />
-
           {/* Upload Zone */}
           <section className="landing-upload">
-            <FileUpload onFileLoad={handleFileLoad} />
+            <FileUpload onFileLoad={handleFileLoad} onDemoLoad={handleDemoLoad} />
           </section>
+
+          {/* No Model Section */}
+          <NoModelSection />
 
           {/* Features */}
           <section className="landing-features">
@@ -234,13 +304,7 @@ function App() {
       <header className="app-header app-header--compact">
         <div className="header-content">
           <div className="logo logo--clickable" onClick={handleReset} title="Retour à l'accueil">
-            <div className="logo-icon logo-icon--small">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            <img src="/logo.svg" alt="Logo" className="logo-img logo-img--small" />
             <div className="logo-text">
               <h1>Devis Impression 3D</h1>
             </div>
