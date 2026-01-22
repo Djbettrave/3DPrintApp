@@ -63,7 +63,8 @@ function App() {
 
   // === ÉTAPE 1 : Sélection du fichier ===
   const handleFileSelect = useCallback((file) => {
-    if (file && file.name.toLowerCase().endsWith('.stl')) {
+    const fileName = file?.name?.toLowerCase() || '';
+    if (file && (fileName.endsWith('.stl') || fileName.endsWith('.obj'))) {
       setSelectedFile(file);
       setSelectedFileName(file.name);
       setStlCheckStatus('PENDING');
@@ -343,7 +344,7 @@ function App() {
               <img src="/logo.svg" alt="Logo" className="logo-img" />
               <div className="logo-text">
                 <h1>Devis Impression 3D</h1>
-                <p>FDM & Resine - Prix instantane</p>
+                <p>FDM & Résine - Prix instantané</p>
               </div>
             </div>
           </div>
@@ -357,18 +358,18 @@ function App() {
               <span className="hero-highlight">en quelques secondes</span>
             </h2>
             <p className="hero-subtitle">
-              Importez votre fichier STL, configurez vos options d'impression
-              et recevez une estimation de prix instantanee.
+              Importez votre fichier .stl ou .obj, configurez vos options d'impression
+              et recevez une estimation de prix instantanée.
             </p>
           </section>
 
           {/* Flow 2 étapes */}
           <section className="verify-flow">
-            {/* ÉTAPE 1 : Vérification */}
+            {/* ÉTAPE 1 : Chargement */}
             <div className="verify-step verify-step--active">
               <div className="verify-step-header">
-                <span className="verify-step-number">1</span>
-                <h3>Verifier mon STL</h3>
+                <span className="verify-step-number"></span>
+                <h3>Charger mon fichier</h3>
                 <span className="verify-step-badge">Obligatoire</span>
               </div>
 
@@ -378,7 +379,7 @@ function App() {
                   <input
                     type="file"
                     id="stl-file-input"
-                    accept=".stl"
+                    accept=".stl,.obj"
                     onChange={(e) => handleFileSelect(e.target.files[0])}
                     hidden
                   />
@@ -391,15 +392,15 @@ function App() {
                     {selectedFileName ? (
                       <span className="file-selected-name">{selectedFileName}</span>
                     ) : (
-                      <span>Selectionner un fichier STL</span>
+                      <span>Sélectionner un fichier .stl ou .obj</span>
                     )}
                   </label>
                 </div>
 
-                {/* Bouton Vérifier */}
+                {/* Bouton Charger */}
                 {selectedFile && stlCheckStatus === 'PENDING' && (
                   <button className="verify-btn" onClick={handleVerify}>
-                    Verifier le fichier
+                    Charger le fichier
                   </button>
                 )}
 
@@ -463,20 +464,6 @@ function App() {
               </div>
             </div>
 
-            {/* ÉTAPE 2 : Aperçu (verrouillée) */}
-            <div className={`verify-step verify-step--locked ${stlCheckStatus !== 'PENDING' && stlCheckStatus !== 'CHECKING' ? '' : 'verify-step--disabled'}`}>
-              <div className="verify-step-header">
-                <span className="verify-step-number">2</span>
-                <h3>Visualiser & Configurer</h3>
-                {(stlCheckStatus === 'PENDING' || stlCheckStatus === 'CHECKING') && (
-                  <svg className="lock-icon" viewBox="0 0 24 24" fill="none" width="16" height="16">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                    <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </div>
-              <p className="verify-step-hint">Verifiez d'abord votre fichier STL pour debloquer cette etape</p>
-            </div>
           </section>
 
           {/* Option cube démo */}
@@ -527,7 +514,7 @@ function App() {
         </main>
 
         <footer className="app-footer">
-          <p>Formats acceptés : STL</p>
+          <p>Formats acceptés : .stl et .obj</p>
         </footer>
       </div>
     );

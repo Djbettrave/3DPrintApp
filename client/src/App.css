@@ -1284,13 +1284,16 @@ body {
   text-align: center;
 }
 
-.finish-price {
+.finish-price,
+.finish-desc {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--color-text-muted);
+  text-align: center;
 }
 
-.finish-option.selected .finish-price {
+.finish-option.selected .finish-price,
+.finish-option.selected .finish-desc {
   color: var(--color-accent);
 }
 

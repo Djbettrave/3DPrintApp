@@ -15,8 +15,8 @@ function NoModelSection() {
   return (
     <section className="no-model-section">
       <div className="no-model-header">
-        <h2>Vous n'avez pas de modèle 3D ?</h2>
-        <p>Pas de problème ! Voici plusieurs solutions pour créer votre fichier STL</p>
+        <h2>Vous n'avez pas de fichier 3D ?</h2>
+        <p>Pas de problème ! Voici plusieurs solutions pour créer votre fichier .stl ou .obj</p>
       </div>
 
       <div className="no-model-cards">
@@ -70,7 +70,7 @@ function NoModelSection() {
           </button>
         </div>
 
-        {/* Card 3: Modélisation CAD */}
+        {/* Card 3: Modélisation */}
         <div className="no-model-card">
           <div className="card-icon card-icon--cad">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -80,10 +80,10 @@ function NoModelSection() {
               <circle cx="11" cy="11" r="2" stroke="currentColor" strokeWidth="2"/>
             </svg>
           </div>
-          <span className="card-badge card-badge--premium">Premium</span>
-          <h3>Modélisation CAD</h3>
+          <span className="card-badge card-badge--premium">Sur devis</span>
+          <h3>Modélisation</h3>
           <p className="card-description">
-            Projet complexe ? Nos experts modélisent votre pièce à partir de plans ou croquis
+            Nous pouvons modéliser votre pièce à partir de plans ou de croquis
           </p>
           <ul className="card-features">
             <li>Révisions incluses</li>

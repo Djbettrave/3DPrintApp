@@ -310,9 +310,9 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
               </div>
             </div>
 
-            {/* Sélection de la qualité */}
+            {/* Sélection de la qualité (précision d'impression) */}
             <div className="option-group">
-              <label className="option-label">Qualité d'impression</label>
+              <label className="option-label">Précision d'impression</label>
               <div className="option-cards">
                 {tech.qualities.map((quality) => (
                   <button
@@ -329,6 +329,32 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Finition après impression */}
+            <div className="option-group">
+              <label className="option-label">Finition après impression</label>
+              <div className="finish-toggle">
+                <button
+                  className={`finish-option ${finishType === 'brut' ? 'selected' : ''}`}
+                  onClick={() => setFinishType('brut')}
+                >
+                  <span className="finish-title">Brut d'impression</span>
+                  <span className="finish-desc">Sortie machine, sans traitement</span>
+                </button>
+                <button
+                  className={`finish-option ${finishType === 'pro' ? 'selected' : ''}`}
+                  onClick={() => setFinishType('pro')}
+                >
+                  <span className="finish-title">Finition professionnelle</span>
+                  <span className="finish-desc">Ponçage, apprêt, peinture – sur devis</span>
+                </button>
+              </div>
+              {finishType === 'pro' && (
+                <p className="finish-info">
+                  Finition professionnelle : devis sur demande. On revient vers vous sous 24h.
+                </p>
+              )}
             </div>
 
             {/* Sélection de la couleur */}
@@ -371,32 +397,6 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
                   +
                 </button>
               </div>
-            </div>
-
-            {/* Finition */}
-            <div className="option-group">
-              <label className="option-label">Finition</label>
-              <div className="finish-toggle">
-                <button
-                  className={`finish-option ${finishType === 'brut' ? 'selected' : ''}`}
-                  onClick={() => setFinishType('brut')}
-                >
-                  <span className="finish-title">Brut d'impression</span>
-                  <span className="finish-price">Prix calculé</span>
-                </button>
-                <button
-                  className={`finish-option ${finishType === 'pro' ? 'selected' : ''}`}
-                  onClick={() => setFinishType('pro')}
-                >
-                  <span className="finish-title">Finition professionnelle</span>
-                  <span className="finish-price">Devis sur demande</span>
-                </button>
-              </div>
-              {finishType === 'pro' && (
-                <p className="finish-info">
-                  Finition professionnelle : devis sur demande. On revient vers vous sous 24h.
-                </p>
-              )}
             </div>
 
             {/* Délai de livraison */}
