@@ -1477,6 +1477,11 @@ body {
   color: var(--color-text-secondary);
 }
 
+.price-line--info {
+  font-style: italic;
+  opacity: 0.8;
+}
+
 .price-total {
   background: linear-gradient(135deg, var(--color-accent), #a855f7);
   padding: var(--spacing-lg);
@@ -2943,6 +2948,17 @@ body {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #ef4444;
+}
+
+.verify-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.verify-detail {
+  font-size: 0.8em;
+  opacity: 0.85;
 }
 
 /* Continue Button */

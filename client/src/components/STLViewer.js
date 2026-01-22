@@ -249,10 +249,15 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
       // Recalculer la bounding box après transformations
       geom.computeBoundingBox();
       const newBox = geom.boundingBox;
+
+      // Mapping des dimensions après rotation (STL Z-up → Three.js Y-up):
+      // - STL X (largeur)     → Three.js X → dims.x (axe rouge)
+      // - STL Y (profondeur)  → Three.js Z → dims.y (axe bleu)
+      // - STL Z (hauteur)     → Three.js Y → dims.z (axe vert, vertical)
       const dims = {
-        x: Math.abs(newBox.max.x - newBox.min.x),
-        y: Math.abs(newBox.max.z - newBox.min.z), // Y dans STL = Z dans Three.js
-        z: Math.abs(newBox.max.y - newBox.min.y)  // Z dans STL = Y dans Three.js (hauteur)
+        x: Math.abs(newBox.max.x - newBox.min.x),  // Largeur (axe rouge)
+        y: Math.abs(newBox.max.z - newBox.min.z),  // Profondeur (axe bleu)
+        z: Math.abs(newBox.max.y - newBox.min.y)   // Hauteur (axe vert, vertical)
       };
       setOriginalDimensions(dims);
       setScale(1);
@@ -539,7 +544,11 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
             <div className="dim-row" key={axis}>
               <span
                 className="dim-label"
-                style={{ color: axis === 'x' ? '#ff6b6b' : axis === 'y' ? '#69db7c' : '#74c0fc' }}
+                style={{
+                  // Couleurs alignées avec les axes visuels Three.js après rotation:
+                  // X = rouge (Three.js X), Y = bleu (Three.js Z = profondeur), Z = vert (Three.js Y = hauteur)
+                  color: axis === 'x' ? '#ff6b6b' : axis === 'y' ? '#74c0fc' : '#69db7c'
+                }}
               >
                 {axis.toUpperCase()}
               </span>

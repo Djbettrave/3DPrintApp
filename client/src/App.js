@@ -12,7 +12,7 @@ import NoModelSection from './components/NoModelSection';
 import MultiObjectErrorModal from './components/MultiObjectErrorModal';
 import AssemblyWarningModal from './components/AssemblyWarningModal';
 import { calculateVolume, calculateDimensions, mm3ToCm3 } from './utils/stlUtils';
-import { analyzeSTLGeometry } from './utils/stlAnalyzer';
+import { analyzeSTLComplete } from './utils/stlAnalyzer';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 
 // Clé publique Stripe (remplacez par votre clé en production)
@@ -85,22 +85,28 @@ function App() {
       const loader = new STLLoader();
       const geometry = loader.parse(arrayBuffer);
 
-      // Analyser pour détecter les objets multiples
-      const analysis = analyzeSTLGeometry(geometry);
+      // Analyser pour détecter les objets multiples ET les trous
+      const analysis = analyzeSTLComplete(geometry);
       setAnalysisResult(analysis);
+
+      // Vérifier si des trous sont détectés
+      const hasHoles = analysis.holes?.hasHoles;
 
       if (analysis.action === 'block') {
         // FAIL : Objets séparés
         setStlCheckStatus('FAIL');
         setQuoteEligibility('QUOTE_ONLY');
         setShowMultiObjectError(true);
-      } else if (analysis.action === 'warn') {
-        // WARN : Assemblage détecté
+      } else if (analysis.action === 'warn' || hasHoles) {
+        // WARN : Assemblage détecté OU trous détectés
         setStlCheckStatus('WARN');
         setQuoteEligibility('QUOTE_ONLY');
-        setShowAssemblyWarning(true);
+        if (analysis.status === 'assembled_objects') {
+          setShowAssemblyWarning(true);
+        }
+        // Note: les trous sont affichés dans le résultat de vérification
       } else {
-        // PASS : Objet unique
+        // PASS : Objet unique sans trous
         setStlCheckStatus('PASS');
         setQuoteEligibility('ALLOWED');
       }
@@ -420,7 +426,19 @@ function App() {
                       <path d="M12 9V13M12 17H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                       <path d="M10.29 3.86L1.82 18C1.64 18.3 1.55 18.64 1.55 19C1.55 19.36 1.64 19.7 1.82 20C2 20.3 2.26 20.56 2.56 20.74C2.87 20.92 3.22 21.01 3.58 21H20.42C20.78 21.01 21.13 20.92 21.44 20.74C21.74 20.56 22 20.3 22.18 20C22.36 19.7 22.45 19.36 22.45 19C22.45 18.64 22.36 18.3 22.18 18L13.71 3.86C13.53 3.56 13.27 3.32 12.97 3.15C12.66 2.98 12.32 2.89 11.97 2.89C11.62 2.89 11.28 2.98 10.97 3.15C10.67 3.32 10.41 3.56 10.23 3.86H10.29Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    <span>STL a verifier - devis sur demande</span>
+                    <div className="verify-result-text">
+                      <span>STL a verifier - devis sur demande</span>
+                      {analysisResult?.holes?.hasHoles && (
+                        <span className="verify-detail">
+                          Mesh non-etanche detecte ({analysisResult.holes.openEdgeCount} aretes ouvertes)
+                        </span>
+                      )}
+                      {analysisResult?.status === 'assembled_objects' && (
+                        <span className="verify-detail">
+                          Assemblage de {analysisResult.components} objets detecte
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
                 {stlCheckStatus === 'FAIL' && (

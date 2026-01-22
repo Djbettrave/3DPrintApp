@@ -11,32 +11,51 @@
  */
 
 // ----------------------------------------
+// PARAMÈTRES DE TARIFICATION GLOBAUX
+// ----------------------------------------
+export const PRICING_CONFIG = {
+  // Utiliser le volume de la bounding box au lieu du volume réel du modèle
+  // La bbox inclut implicitement l'espace pour les supports
+  useBoundingBoxVolume: true,
+
+  // Prix minimum (couvre les frais fixes : préparation, contrôle qualité)
+  minimumPrice: 10.00,           // Prix minimum en €
+
+  // Paramètres de calcul (pour référence)
+  // Coefficient = (Taux_horaire / Vitesse_impression) × Fill_factor
+  // 0.0333 = (2.50 / 15) × 0.20
+  hourlyRate: 2.50,              // Taux horaire machine en €/h
+  printSpeedCm3PerHour: 15,      // Vitesse moyenne FDM en cm³/h
+  fillFactor: 0.20               // 20% de la bbox est réellement imprimé
+};
+
+// ----------------------------------------
 // TECHNOLOGIE FDM (Filament)
 // ----------------------------------------
 export const FDM_CONFIG = {
   // Dimensions maximales de la zone d'impression (en mm)
-  maxSize: { x: 400, y: 400, z: 400 },
+  maxSize: { x: 300, y: 300, z: 300 },
 
   // Matériaux disponibles
   materials: [
     {
       id: 'PLA',
       name: 'PLA',
-      price: 0.03,           // Prix en €/cm³
+      price: 0.027,           // Prix en €/cm³
       color: '#22c55e',      // Couleur d'affichage (vert)
       desc: 'Standard, biodégradable'
     },
     {
       id: 'PETG',
       name: 'PETG',
-      price: 0.04,           // Prix en €/cm³
+      price: 0.032,           // Prix en €/cm³
       color: '#3b82f6',      // Couleur d'affichage (bleu)
       desc: 'Résistant, flexible'
     },
     {
       id: 'ABS',
       name: 'ABS',
-      price: 0.05,           // Prix en €/cm³
+      price: 0.034,           // Prix en €/cm³
       color: '#f59e0b',      // Couleur d'affichage (orange)
       desc: 'Durable, haute température'
     }
@@ -55,21 +74,21 @@ export const FDM_CONFIG = {
       name: 'Fine',
       layer: '0.1mm',
       desc: 'Haute qualité, plus long',
-      multiplier: 1.5        // Multiplicateur de prix (×1.5)
+      multiplier: 1.2        // Multiplicateur de prix (×1.5)
     },
     {
       id: 'normal',
       name: 'Standard',
       layer: '0.2mm',
       desc: 'Équilibre qualité/temps',
-      multiplier: 1.0        // Prix de base (×1.0)
+      multiplier: 1.1       // Prix de base (×1.0)
     },
     {
       id: 'draft',
       name: 'Rapide',
       layer: '0.28mm',
       desc: 'Prototype rapide',
-      multiplier: 0.8        // Réduction de prix (×0.8)
+      multiplier: 1       // Réduction de prix (×0.8)
     }
   ]
 };
@@ -79,14 +98,14 @@ export const FDM_CONFIG = {
 // ----------------------------------------
 export const SLA_CONFIG = {
   // Dimensions maximales de la zone d'impression (en mm)
-  maxSize: { x: 300, y: 200, z: 120 },
+  maxSize: { x: 250, y: 160, z: 250 },
 
   // Matériaux disponibles
   materials: [
     {
       id: 'standard',
       name: 'Résine Standard',
-      price: 0.12,           // Prix en €/cm³
+      price: 0.2,           // Prix en €/cm³
       color: '#8b5cf6',      // Couleur d'affichage (violet)
       desc: 'Polyvalente, finition lisse'
     }

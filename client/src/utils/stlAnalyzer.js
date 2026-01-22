@@ -1,12 +1,14 @@
 /**
- * STL Analyzer - Détection des fichiers multi-objets
+ * STL Analyzer - Détection des fichiers multi-objets et des trous
  *
  * Détecte si un fichier STL contient plusieurs objets distincts
  * et détermine s'ils sont séparés ou assemblés.
+ * Détecte également les trous (arêtes ouvertes) dans le mesh.
  */
 
 // Flag de feature - mettre à false pour désactiver
 const ENABLE_MULTI_OBJECT_DETECTION = process.env.REACT_APP_ENABLE_MULTI_OBJECT_DETECTION !== 'false';
+const ENABLE_HOLE_DETECTION = process.env.REACT_APP_ENABLE_HOLE_DETECTION !== 'false';
 
 // Seuil de séparation en mm (objets séparés de plus que ça = bloqués)
 const SEPARATION_THRESHOLD = 1.0;
@@ -237,6 +239,94 @@ function boxToBoxDistance(box1, box2) {
 
   // Distance euclidienne
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/**
+ * Crée une clé unique pour une arête (paire de vertices ordonnée)
+ * L'ordre est normalisé pour que edge(A,B) === edge(B,A)
+ */
+function edgeKey(v1, v2) {
+  const key1 = vertexKey(v1);
+  const key2 = vertexKey(v2);
+  // Ordonner pour avoir une clé unique quelle que soit la direction
+  return key1 < key2 ? `${key1}|${key2}` : `${key2}|${key1}`;
+}
+
+/**
+ * Détecte les trous dans le mesh (arêtes ouvertes)
+ * Un mesh watertight = chaque arête est partagée par exactement 2 faces
+ * @param {Array} triangles - Liste des triangles extraits
+ * @returns {Object} { hasHoles, openEdgeCount, totalEdgeCount }
+ */
+function detectHoles(triangles) {
+  // Map: edgeKey -> nombre de faces qui utilisent cette arête
+  const edgeCount = new Map();
+
+  // Parcourir chaque triangle et compter les arêtes
+  triangles.forEach(tri => {
+    const v = tri.vertices;
+
+    // Un triangle a 3 arêtes: (v0,v1), (v1,v2), (v2,v0)
+    const edges = [
+      edgeKey(v[0], v[1]),
+      edgeKey(v[1], v[2]),
+      edgeKey(v[2], v[0])
+    ];
+
+    edges.forEach(edge => {
+      edgeCount.set(edge, (edgeCount.get(edge) || 0) + 1);
+    });
+  });
+
+  // Compter les arêtes ouvertes (utilisées par 1 seule face)
+  let openEdgeCount = 0;
+  edgeCount.forEach(count => {
+    if (count === 1) {
+      openEdgeCount++;
+    }
+  });
+
+  return {
+    hasHoles: openEdgeCount > 0,
+    openEdgeCount,
+    totalEdgeCount: edgeCount.size
+  };
+}
+
+/**
+ * Analyse complète d'une géométrie STL
+ * Exporte une fonction qui combine détection multi-objets et trous
+ */
+export function analyzeSTLComplete(geometry) {
+  const baseAnalysis = analyzeSTLGeometry(geometry);
+
+  // Si la détection de trous est désactivée, retourner l'analyse de base
+  if (!ENABLE_HOLE_DETECTION) {
+    return { ...baseAnalysis, holes: null };
+  }
+
+  try {
+    const position = geometry.attributes.position;
+    const triangles = extractTriangles(position);
+    const holeAnalysis = detectHoles(triangles);
+
+    // Déterminer l'action finale en combinant les deux analyses
+    let finalAction = baseAnalysis.action;
+
+    // Si des trous sont détectés et que l'action n'est pas déjà 'block'
+    if (holeAnalysis.hasHoles && finalAction !== 'block') {
+      finalAction = 'warn';
+    }
+
+    return {
+      ...baseAnalysis,
+      action: finalAction,
+      holes: holeAnalysis
+    };
+  } catch (error) {
+    console.error('Erreur lors de la détection des trous:', error);
+    return { ...baseAnalysis, holes: null };
+  }
 }
 
 export default analyzeSTLGeometry;

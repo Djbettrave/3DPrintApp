@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TECHNOLOGIES, POST_PROCESSING, DELIVERY_OPTIONS, CONTACT_EMAIL } from '../config/pricing';
+import { TECHNOLOGIES, POST_PROCESSING, DELIVERY_OPTIONS, CONTACT_EMAIL, PRICING_CONFIG } from '../config/pricing';
 
 // Icône FDM (lignes de couche)
 const FDMIcon = () => (
@@ -78,10 +78,17 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
     setSelectedColor(newTech.colors[0].id);
   }, [selectedTech]);
 
+  // Calculer le volume de la bounding box (en cm³)
+  const bboxVolume = useMemo(() => {
+    if (!dimensions) return 0;
+    // dimensions sont en mm, on convertit en cm³ (mm³ / 1000)
+    return (dimensions.x * dimensions.y * dimensions.z) / 1000;
+  }, [dimensions]);
+
   // Calculer le prix
   const priceDetails = useMemo(() => {
     if (!volume || volume <= 0 || isOversized || isQuoteRequest) {
-      return { printPrice: 0, deliveryExtra: 0, totalPrice: 0, unitPrice: 0 };
+      return { printPrice: 0, deliveryExtra: 0, totalPrice: 0, unitPrice: 0, bboxVolume: 0 };
     }
 
     const material = tech.materials.find(m => m.id === selectedMaterial);
@@ -89,11 +96,17 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
     const delivery = DELIVERY_OPTIONS.find(d => d.id === selectedDelivery);
 
     if (!material || !quality || !delivery) {
-      return { printPrice: 0, deliveryExtra: 0, totalPrice: 0, unitPrice: 0 };
+      return { printPrice: 0, deliveryExtra: 0, totalPrice: 0, unitPrice: 0, bboxVolume: 0 };
     }
 
+    // Utiliser le volume bbox ou le volume réel selon la config
+    const pricingVolume = PRICING_CONFIG.useBoundingBoxVolume ? bboxVolume : volume;
+
     // Prix de base impression (pour 1 pièce)
-    const unitPrice = volume * material.price * quality.multiplier;
+    let unitPrice = pricingVolume * material.price * quality.multiplier;
+
+    // Appliquer le prix minimum
+    unitPrice = Math.max(unitPrice, PRICING_CONFIG.minimumPrice);
 
     // Prix total impression (quantité)
     const printPrice = unitPrice * quantity;
@@ -109,9 +122,11 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
       deliveryExtra,
       totalPrice,
       unitPrice,
-      deliveryMultiplier: delivery.multiplier
+      deliveryMultiplier: delivery.multiplier,
+      bboxVolume: pricingVolume,
+      isMinimumApplied: (pricingVolume * material.price * quality.multiplier) < PRICING_CONFIG.minimumPrice
     };
-  }, [volume, selectedTech, selectedMaterial, selectedQuality, quantity, selectedDelivery, tech, isOversized, isQuoteRequest]);
+  }, [volume, bboxVolume, selectedTech, selectedMaterial, selectedQuality, quantity, selectedDelivery, tech, isOversized, isQuoteRequest]);
 
   // Générer le lien mailto (hors gabarit)
   const generateMailtoLink = () => {
@@ -193,6 +208,7 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
         finishType,
         delivery: selectedDel,
         volume,
+        bboxVolume,
         dimensions,
         prices: priceDetails
       });
@@ -453,6 +469,12 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
                       <span>Impression ({selectedMat?.name}, {selectedQual?.name})</span>
                       <span>{priceDetails.unitPrice.toFixed(2)}€</span>
                     </div>
+                    {priceDetails.isMinimumApplied && (
+                      <div className="price-line price-line--info">
+                        <span>Prix minimum appliqué</span>
+                        <span>{PRICING_CONFIG.minimumPrice.toFixed(2)}€</span>
+                      </div>
+                    )}
                     {quantity > 1 && (
                       <div className="price-line">
                         <span>× {quantity} pièces</span>
