@@ -18,15 +18,18 @@ export const PRICING_CONFIG = {
   // La bbox inclut implicitement l'espace pour les supports
   useBoundingBoxVolume: true,
 
-  // Prix minimum (couvre les frais fixes : préparation, contrôle qualité)
-  minimumPrice: 10.00,           // Prix minimum en €
+  // Nouveau modèle de prix : Frais fixes + Prix variable
+  // Prix = fixedCost + (Volume × pricePerCm3 × Qualité × Matériau)
+  fixedCost: 12.00,              // Frais fixes : préparation, contrôle qualité, machine
+  pricePerCm3: 0.020,            // Prix variable par cm³ (matière + temps)
 
-  // Paramètres de calcul (pour référence)
-  // Coefficient = (Taux_horaire / Vitesse_impression) × Fill_factor
-  // 0.0333 = (2.50 / 15) × 0.20
-  hourlyRate: 2.50,              // Taux horaire machine en €/h
-  printSpeedCm3PerHour: 15,      // Vitesse moyenne FDM en cm³/h
-  fillFactor: 0.20               // 20% de la bbox est réellement imprimé
+  // Prix minimum (sécurité pour très petites pièces)
+  minimumPrice: 15.00,           // Prix minimum en €
+
+  // Anciens paramètres (pour référence)
+  // hourlyRate: 2.50,           // Taux horaire machine en €/h
+  // printSpeedCm3PerHour: 15,   // Vitesse moyenne FDM en cm³/h
+  // fillFactor: 0.20            // 20% de la bbox est réellement imprimé
 };
 
 // ----------------------------------------
@@ -41,21 +44,21 @@ export const FDM_CONFIG = {
     {
       id: 'PLA',
       name: 'PLA',
-      price: 0.027,           // Prix en €/cm³
+      price: 0.025,           // Prix en €/cm³
       color: '#22c55e',      // Couleur d'affichage (vert)
       desc: 'Standard, biodégradable'
     },
     {
       id: 'PETG',
       name: 'PETG',
-      price: 0.032,           // Prix en €/cm³
+      price: 0.028,           // Prix en €/cm³
       color: '#3b82f6',      // Couleur d'affichage (bleu)
       desc: 'Résistant, flexible'
     },
     {
       id: 'ABS',
       name: 'ABS',
-      price: 0.034,           // Prix en €/cm³
+      price: 0.03,           // Prix en €/cm³
       color: '#f59e0b',      // Couleur d'affichage (orange)
       desc: 'Durable, haute température'
     }

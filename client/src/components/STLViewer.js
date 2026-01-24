@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, TransformControls, Environment } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter';
 import * as THREE from 'three';
 import { mm3ToCm3 } from '../utils/stlUtils';
@@ -13,7 +14,6 @@ function Model({
   geometry,
   transformMode,
   scale,
-  onScaleChange,
   onPoseChange,
   initialPose,
   resetPoseTrigger
@@ -21,10 +21,10 @@ function Model({
   const meshRef = useRef();
   const transformRef = useRef();
 
-  // Appliquer le scale
+  // Appliquer le scale (x, y, z indépendants)
   useEffect(() => {
     if (meshRef.current) {
-      meshRef.current.scale.set(scale, scale, scale);
+      meshRef.current.scale.set(scale.x, scale.z, scale.y);
     }
   }, [scale]);
 
@@ -36,35 +36,26 @@ function Model({
     }
   }, [resetPoseTrigger, initialPose]);
 
-  // Écouter les changements de transformation
+  // Écouter les changements de pose (position/rotation uniquement)
   useEffect(() => {
     if (transformRef.current) {
       const controls = transformRef.current;
       const callback = () => {
-        if (meshRef.current) {
-          // Notifier les changements de scale
-          if (onScaleChange) {
-            const s = meshRef.current.scale;
-            const uniformScale = (s.x + s.y + s.z) / 3;
-            onScaleChange(uniformScale);
-          }
-          // Notifier les changements de pose (position/rotation)
-          if (onPoseChange) {
-            onPoseChange({
-              position: meshRef.current.position.clone(),
-              rotation: meshRef.current.rotation.clone()
-            });
-          }
+        if (meshRef.current && onPoseChange) {
+          onPoseChange({
+            position: meshRef.current.position.clone(),
+            rotation: meshRef.current.rotation.clone()
+          });
         }
       };
       controls.addEventListener('change', callback);
       return () => controls.removeEventListener('change', callback);
     }
-  }, [onScaleChange, onPoseChange]);
+  }, [onPoseChange]);
 
   return (
     <>
-      <mesh ref={meshRef} geometry={geometry} scale={[scale, scale, scale]}>
+      <mesh ref={meshRef} geometry={geometry} scale={[scale.x, scale.z, scale.y]}>
         <meshPhysicalMaterial
           color="#6B8DD6"
           metalness={0.1}
@@ -101,8 +92,9 @@ function CameraController({ geometry, orbitControlsRef, triggerHome, zoomAction,
       const center = new THREE.Vector3();
       box.getCenter(center);
 
-      // Prendre en compte l'échelle actuelle
-      const scaledSize = size.clone().multiplyScalar(scale);
+      // Prendre en compte l'échelle actuelle (moyenne des 3 axes)
+      const avgScale = (scale.x + scale.y + scale.z) / 3;
+      const scaledSize = size.clone().multiplyScalar(avgScale);
       const maxDim = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
 
       // Protection contre les modèles trop petits ou mal définis
@@ -169,13 +161,14 @@ function BuildPlate({ size }) {
   );
 }
 
-function STLViewer({ fileData, onModelLoad, onScaleApply }) {
+function STLViewer({ fileData, fileName, onModelLoad, onScaleApply }) {
   const [geometry, setGeometry] = useState(null);
   const [transformMode, setTransformMode] = useState('translate');
   const [originalDimensions, setOriginalDimensions] = useState(null);
   const [originalVolume, setOriginalVolume] = useState(0);
-  const [scale, setScale] = useState(1);
-  const [appliedScale, setAppliedScale] = useState(1);
+  const [scale, setScale] = useState({ x: 1, y: 1, z: 1 });
+  const [appliedScale, setAppliedScale] = useState({ x: 1, y: 1, z: 1 });
+  const [proportionalLock, setProportionalLock] = useState(true);
   const [editingDim, setEditingDim] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [triggerHome, setTriggerHome] = useState(0);
@@ -229,102 +222,104 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
   }, []);
 
   useEffect(() => {
-    if (fileData) {
+    if (!fileData) return;
+
+    let geom;
+    const isOBJ = fileName?.toLowerCase().endsWith('.obj');
+
+    if (isOBJ) {
+      // OBJ : parser le texte et extraire la géométrie du premier mesh
+      const text = new TextDecoder().decode(fileData);
+      const loader = new OBJLoader();
+      const group = loader.parse(text);
+      const mesh = group.children.find(child => child.isMesh);
+      if (!mesh) {
+        console.error('Aucun mesh trouvé dans le fichier OBJ');
+        return;
+      }
+      geom = mesh.geometry.clone();
+    } else {
+      // STL : parser binaire
       const loader = new STLLoader();
-      const geom = loader.parse(fileData);
-
-      // Rotation pour aligner Z-up (STL) vers Y-up (Three.js)
-      geom.rotateX(-Math.PI / 2);
-
-      geom.computeBoundingBox();
-      geom.center();
-
-      // Repositionner le modèle sur le plateau (Y = 0)
-      const box = geom.boundingBox;
-      const height = box.max.y - box.min.y;
-      geom.translate(0, height / 2, 0);
-
-      setGeometry(geom);
-
-      // Recalculer la bounding box après transformations
-      geom.computeBoundingBox();
-      const newBox = geom.boundingBox;
-
-      // Mapping des dimensions après rotation (STL Z-up → Three.js Y-up):
-      // - STL X (largeur)     → Three.js X → dims.x (axe rouge)
-      // - STL Y (profondeur)  → Three.js Z → dims.y (axe bleu)
-      // - STL Z (hauteur)     → Three.js Y → dims.z (axe vert, vertical)
-      const dims = {
-        x: Math.abs(newBox.max.x - newBox.min.x),  // Largeur (axe rouge)
-        y: Math.abs(newBox.max.z - newBox.min.z),  // Profondeur (axe bleu)
-        z: Math.abs(newBox.max.y - newBox.min.y)   // Hauteur (axe vert, vertical)
-      };
-      setOriginalDimensions(dims);
-      setScale(1);
-      setAppliedScale(1);
-
-      // === BUG 1 FIX : stocker la pose initiale ===
-      const initPose = {
-        position: new THREE.Vector3(0, 0, 0),
-        rotation: new THREE.Euler(0, 0, 0)
-      };
-      setInitialPose(initPose);
-      setPoseModified(false);
-      setResetPoseTrigger(0);
-      setCameraRefitTrigger(0);
-
-      // Calculer le volume original
-      const position = geom.attributes.position;
-      let vol = 0;
-      for (let i = 0; i < position.count; i += 3) {
-        const v1 = { x: position.getX(i), y: position.getY(i), z: position.getZ(i) };
-        const v2 = { x: position.getX(i + 1), y: position.getY(i + 1), z: position.getZ(i + 1) };
-        const v3 = { x: position.getX(i + 2), y: position.getY(i + 2), z: position.getZ(i + 2) };
-        vol += (v1.x * (v2.y * v3.z - v3.y * v2.z) - v2.x * (v1.y * v3.z - v3.y * v1.z) + v3.x * (v1.y * v2.z - v2.y * v1.z)) / 6.0;
-      }
-      setOriginalVolume(Math.abs(vol));
-
-      if (onModelLoad) {
-        onModelLoad(geom);
-      }
+      geom = loader.parse(fileData);
     }
-  }, [fileData, onModelLoad]);
 
-  const handleScaleChange = useCallback((newScale) => {
-    setScale(newScale);
-  }, []);
+    // Rotation pour aligner Z-up vers Y-up (Three.js)
+    geom.rotateX(-Math.PI / 2);
+    geom.computeBoundingBox();
+    geom.center();
+
+    // Repositionner le modèle sur le plateau (Y = 0)
+    const box = geom.boundingBox;
+    const height = box.max.y - box.min.y;
+    geom.translate(0, height / 2, 0);
+
+    setGeometry(geom);
+
+    // Recalculer la bounding box après transformations
+    geom.computeBoundingBox();
+    const newBox = geom.boundingBox;
+
+    const dims = {
+      x: Math.abs(newBox.max.x - newBox.min.x),
+      y: Math.abs(newBox.max.z - newBox.min.z),
+      z: Math.abs(newBox.max.y - newBox.min.y)
+    };
+    setOriginalDimensions(dims);
+    setScale({ x: 1, y: 1, z: 1 });
+    setAppliedScale({ x: 1, y: 1, z: 1 });
+
+    setInitialPose({
+      position: new THREE.Vector3(0, 0, 0),
+      rotation: new THREE.Euler(0, 0, 0)
+    });
+    setPoseModified(false);
+    setResetPoseTrigger(0);
+    setCameraRefitTrigger(0);
+
+    // Calculer le volume original
+    const position = geom.attributes.position;
+    let vol = 0;
+    for (let i = 0; i < position.count; i += 3) {
+      const v1 = { x: position.getX(i), y: position.getY(i), z: position.getZ(i) };
+      const v2 = { x: position.getX(i + 1), y: position.getY(i + 1), z: position.getZ(i + 1) };
+      const v3 = { x: position.getX(i + 2), y: position.getY(i + 2), z: position.getZ(i + 2) };
+      vol += (v1.x * (v2.y * v3.z - v3.y * v2.z) - v2.x * (v1.y * v3.z - v3.y * v1.z) + v3.x * (v1.y * v2.z - v2.y * v1.z)) / 6.0;
+    }
+    setOriginalVolume(Math.abs(vol));
+
+    if (onModelLoad) {
+      onModelLoad(geom);
+    }
+  }, [fileData, fileName, onModelLoad]);
 
   // === BUG 2 FIX : suppression auto-sync, le bouton "Appliquer" reste visible ===
   // L'utilisateur doit cliquer "Appliquer" pour valider les changements
 
-  // === BUG 3 FIX : resetScale déclenche aussi le refit caméra ===
   const resetScale = () => {
-    setScale(1);
-    // Appliquer immédiatement le reset et déclencher le refit caméra
+    setScale({ x: 1, y: 1, z: 1 });
     if (onScaleApply && originalDimensions && originalVolume) {
       onScaleApply(originalDimensions, mm3ToCm3(originalVolume));
-      setAppliedScale(1);
+      setAppliedScale({ x: 1, y: 1, z: 1 });
     }
     setCameraRefitTrigger(prev => prev + 1);
   };
 
-  const hasScaleChanged = scale !== appliedScale;
+  const hasScaleChanged = scale.x !== appliedScale.x || scale.y !== appliedScale.y || scale.z !== appliedScale.z;
 
-  // === BUG 2 & 3 FIX : appliquer le scale et déclencher refit caméra ===
   const handleApplyScale = useCallback(() => {
     if (onScaleApply && originalDimensions && originalVolume) {
       const newDimensions = {
-        x: originalDimensions.x * scale,
-        y: originalDimensions.y * scale,
-        z: originalDimensions.z * scale
+        x: originalDimensions.x * scale.x,
+        y: originalDimensions.y * scale.y,
+        z: originalDimensions.z * scale.z
       };
-      // Volume scales by the cube of the scale factor
-      const newVolumeMm3 = originalVolume * Math.pow(scale, 3);
+      const volumeScale = scale.x * scale.y * scale.z;
+      const newVolumeMm3 = originalVolume * volumeScale;
       const newVolumeCm3 = mm3ToCm3(newVolumeMm3);
 
       onScaleApply(newDimensions, newVolumeCm3);
-      setAppliedScale(scale);
-      // Déclencher le refit caméra après application
+      setAppliedScale({ ...scale });
       setCameraRefitTrigger(prev => prev + 1);
     }
   }, [scale, originalDimensions, originalVolume, onScaleApply]);
@@ -357,9 +352,9 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
   const currentDimensions = useMemo(() => {
     if (!originalDimensions) return null;
     return {
-      x: originalDimensions.x * scale,
-      y: originalDimensions.y * scale,
-      z: originalDimensions.z * scale
+      x: originalDimensions.x * scale.x,
+      y: originalDimensions.y * scale.y,
+      z: originalDimensions.z * scale.z
     };
   }, [originalDimensions, scale]);
 
@@ -377,8 +372,12 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
   const handleDimensionSubmit = (axis) => {
     const newValue = parseFloat(editValue);
     if (!isNaN(newValue) && newValue > 0 && originalDimensions) {
-      const newScale = newValue / originalDimensions[axis];
-      setScale(newScale);
+      const newAxisScale = newValue / originalDimensions[axis];
+      if (proportionalLock) {
+        setScale({ x: newAxisScale, y: newAxisScale, z: newAxisScale });
+      } else {
+        setScale(prev => ({ ...prev, [axis]: newAxisScale }));
+      }
     }
     setEditingDim(null);
   };
@@ -434,13 +433,6 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
         >
           <span>Tourner</span>
         </button>
-        <button
-          className={`toolbar-btn ${transformMode === 'scale' ? 'active' : ''}`}
-          onClick={() => setTransformMode('scale')}
-          title="Redimensionner (S)"
-        >
-          <span>Échelle</span>
-        </button>
         <div className="toolbar-separator" />
         <button
           className={`toolbar-btn reset-pose-btn ${poseModified ? 'has-changes' : ''}`}
@@ -495,7 +487,6 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
           geometry={geometry}
           transformMode={transformMode}
           scale={scale}
-          onScaleChange={handleScaleChange}
           onPoseChange={handlePoseChange}
           initialPose={initialPose}
           resetPoseTrigger={resetPoseTrigger}
@@ -535,9 +526,28 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
         <div className="dimensions-panel">
           <div className="dimensions-header">
             <h4>Dimensions</h4>
-            <button className="reset-scale-btn" onClick={resetScale} title="Réinitialiser l'échelle">
-              Reset
-            </button>
+            <div className="dimensions-header-actions">
+              <button
+                className={`lock-btn ${proportionalLock ? 'locked' : ''}`}
+                onClick={() => setProportionalLock(!proportionalLock)}
+                title={proportionalLock ? 'Mode proportionnel (cliquez pour désactiver)' : 'Mode libre (cliquez pour activer proportionnel)'}
+              >
+                {proportionalLock ? (
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                    <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="2"/>
+                    <path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                    <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="2"/>
+                    <path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                )}
+              </button>
+              <button className="reset-scale-btn" onClick={resetScale} title="Réinitialiser l'échelle">
+                Reset
+              </button>
+            </div>
           </div>
 
           {['x', 'y', 'z'].map((axis) => (
@@ -575,7 +585,12 @@ function STLViewer({ fileData, onModelLoad, onScaleApply }) {
 
           <div className="dim-row scale-row">
             <span className="dim-label">Échelle</span>
-            <span className="dim-value">{(scale * 100).toFixed(0)}%</span>
+            <span className="dim-value">
+              {scale.x === scale.y && scale.y === scale.z
+                ? `${(scale.x * 100).toFixed(0)}%`
+                : `X:${(scale.x * 100).toFixed(0)}% Y:${(scale.y * 100).toFixed(0)}% Z:${(scale.z * 100).toFixed(0)}%`
+              }
+            </span>
           </div>
 
           <div className="dimensions-actions">

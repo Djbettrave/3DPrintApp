@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TECHNOLOGIES, POST_PROCESSING, DELIVERY_OPTIONS, CONTACT_EMAIL, PRICING_CONFIG } from '../config/pricing';
+import { TECHNOLOGIES, DELIVERY_OPTIONS, PRICING_CONFIG } from '../config/pricing';
+import QuoteRequestModal from './QuoteRequestModal';
 
 // Icône FDM (lignes de couche)
 const FDMIcon = () => (
@@ -52,8 +53,10 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
   const [selectedQuality, setSelectedQuality] = useState('normal');
   const [selectedColor, setSelectedColor] = useState('noir');
   const [quantity, setQuantity] = useState(1);
-  const [finishType, setFinishType] = useState('brut'); // 'brut' ou 'pro'
+  const [finishType, setFinishType] = useState('brut');
   const [selectedDelivery, setSelectedDelivery] = useState('standard');
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [quoteModalType, setQuoteModalType] = useState('quote');
 
   const tech = TECHNOLOGIES[selectedTech];
 
@@ -102,8 +105,9 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
     // Utiliser le volume bbox ou le volume réel selon la config
     const pricingVolume = PRICING_CONFIG.useBoundingBoxVolume ? bboxVolume : volume;
 
-    // Prix de base impression (pour 1 pièce)
-    let unitPrice = pricingVolume * material.price * quality.multiplier;
+    // Prix avec nouveau modèle : Frais fixes + Variable
+    // Prix = fixedCost + (Volume × Prix_matériau × Qualité)
+    let unitPrice = PRICING_CONFIG.fixedCost + (pricingVolume * material.price * quality.multiplier);
 
     // Appliquer le prix minimum
     unitPrice = Math.max(unitPrice, PRICING_CONFIG.minimumPrice);
@@ -128,67 +132,45 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
     };
   }, [volume, bboxVolume, selectedTech, selectedMaterial, selectedQuality, quantity, selectedDelivery, tech, isOversized, isQuoteRequest]);
 
-  // Générer le lien mailto (hors gabarit)
-  const generateMailtoLink = () => {
-    const subject = encodeURIComponent('Devis pièce hors gabarit');
-    const body = encodeURIComponent(
-      `Bonjour,\n\nJe souhaite obtenir un devis pour une pièce dépassant les dimensions standard.\n\n` +
-      `Dimensions du modèle:\n` +
-      `- X: ${dimensions?.x?.toFixed(1) || '?'} mm\n` +
-      `- Y: ${dimensions?.y?.toFixed(1) || '?'} mm\n` +
-      `- Z: ${dimensions?.z?.toFixed(1) || '?'} mm\n` +
-      `- Volume: ${volume?.toFixed(2) || '?'} cm³\n\n` +
-      `Technologie souhaitée: ${tech.name}\n\n` +
-      `Merci de me recontacter.\n\nCordialement`
-    );
-    return `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+  // Générer la raison du devis
+  const getQuoteReason = () => {
+    const isUrgent = selectedDelivery === 'urgent';
+    const isPro = finishType === 'pro';
+    const reasons = [
+      isSTLQuoteOnly && 'STL nécessitant vérification',
+      isUrgent && 'Délai ultra rapide',
+      isPro && 'Finition professionnelle'
+    ].filter(Boolean);
+    return reasons.join(' + ') || 'Demande de devis';
   };
 
-  // Générer le lien mailto (devis sur demande)
-  const generateQuoteMailtoLink = () => {
+  // Ouvrir le modal de devis
+  const openQuoteModal = (type) => {
+    setQuoteModalType(type);
+    setShowQuoteModal(true);
+  };
+
+  // Données pré-remplies pour le modal
+  const getQuotePrefillData = () => {
     const selectedMat = tech.materials.find(m => m.id === selectedMaterial);
     const selectedQual = tech.qualities.find(q => q.id === selectedQuality);
     const selectedCol = tech.colors.find(c => c.id === selectedColor);
+    const selectedDel = DELIVERY_OPTIONS.find(d => d.id === selectedDelivery);
 
-    const isUrgent = selectedDelivery === 'urgent';
-    const isPro = finishType === 'pro';
-
-    let reason = '';
-    if (isSTLQuoteOnly && isUrgent && isPro) {
-      reason = 'STL nécessitant vérification + Délai ultra rapide + Finition professionnelle';
-    } else if (isSTLQuoteOnly && isUrgent) {
-      reason = 'STL nécessitant vérification + Délai ultra rapide';
-    } else if (isSTLQuoteOnly && isPro) {
-      reason = 'STL nécessitant vérification + Finition professionnelle';
-    } else if (isSTLQuoteOnly) {
-      reason = 'STL nécessitant vérification manuelle';
-    } else if (isUrgent && isPro) {
-      reason = 'Délai ultra rapide + Finition professionnelle';
-    } else if (isUrgent) {
-      reason = 'Délai ultra rapide (moins de 3 jours)';
-    } else {
-      reason = 'Finition professionnelle';
-    }
-
-    const subject = encodeURIComponent(`Demande de devis - ${reason}`);
-    const body = encodeURIComponent(
-      `Bonjour,\n\nJe souhaite obtenir un devis pour : ${reason}\n\n` +
-      `Dimensions du modèle:\n` +
-      `- X: ${dimensions?.x?.toFixed(1) || '?'} mm\n` +
-      `- Y: ${dimensions?.y?.toFixed(1) || '?'} mm\n` +
-      `- Z: ${dimensions?.z?.toFixed(1) || '?'} mm\n` +
-      `- Volume: ${volume?.toFixed(2) || '?'} cm³\n\n` +
-      `Configuration:\n` +
-      `- Technologie: ${tech.name}\n` +
-      `- Matériau: ${selectedMat?.name || '?'}\n` +
-      `- Qualité: ${selectedQual?.name || '?'}\n` +
-      `- Couleur: ${selectedCol?.name || '?'}\n` +
-      `- Quantité: ${quantity}\n` +
-      `- Finition: ${isPro ? 'Professionnelle' : 'Brut d\'impression'}\n` +
-      `- Délai: ${isUrgent ? 'Moins de 3 jours' : 'Standard/Express'}\n\n` +
-      `Merci de me recontacter.\n\nCordialement`
-    );
-    return `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    return {
+      reason: getQuoteReason(),
+      dimensions,
+      volume,
+      config: {
+        technology: tech.name,
+        material: selectedMat?.name,
+        quality: selectedQual?.name,
+        color: selectedCol?.name,
+        quantity,
+        finishType,
+        delivery: selectedDel?.name
+      }
+    };
   };
 
   // Handler pour le checkout
@@ -279,9 +261,9 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
                 Max {selectedTech}: {tech.maxSize.x} × {tech.maxSize.y} × {tech.maxSize.z} mm
               </p>
             </div>
-            <a href={generateMailtoLink()} className="size-warning-btn">
+            <button className="size-warning-btn" onClick={() => openQuoteModal('oversized')}>
               Demander un devis
-            </a>
+            </button>
           </div>
         )}
 
@@ -454,13 +436,16 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
                       <br/>Devis personnalisé sous 24h.
                     </p>
                   </div>
-                  <a href={generateQuoteMailtoLink()} className="checkout-btn checkout-btn--quote">
+                  <button
+                    className="checkout-btn checkout-btn--quote"
+                    onClick={() => openQuoteModal(isSTLQuoteOnly ? 'stl_issue' : 'quote')}
+                  >
                     <svg viewBox="0 0 24 24" fill="none" className="checkout-icon">
-                      <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M22 6L12 13L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                     Demander un devis
-                  </a>
+                  </button>
                 </>
               ) : (
                 <>
@@ -508,6 +493,14 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
           </>
         )}
       </div>
+
+      {showQuoteModal && (
+        <QuoteRequestModal
+          type={quoteModalType}
+          onClose={() => setShowQuoteModal(false)}
+          prefillData={getQuotePrefillData()}
+        />
+      )}
     </div>
   );
 }

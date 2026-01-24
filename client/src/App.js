@@ -559,6 +559,7 @@ function App() {
         <div className="viewer-section">
           <STLViewer
             fileData={fileData}
+            fileName={fileName}
             onModelLoad={handleModelLoad}
             onScaleApply={handleScaleApply}
           />

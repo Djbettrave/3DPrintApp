@@ -507,6 +507,39 @@ body {
   margin-bottom: var(--spacing-sm);
 }
 
+.dimensions-header-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.lock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lock-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.lock-btn.locked {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: rgba(99, 102, 241, 0.1);
+}
+
 .dimensions-panel h4 {
   font-size: 0.75rem;
   font-weight: 500;
@@ -2585,6 +2618,28 @@ body {
   font-size: 0.688rem;
   color: var(--color-text-muted);
   font-weight: 400;
+}
+
+.label-hint {
+  font-size: 0.688rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  margin-left: var(--spacing-xs);
+}
+
+.field-help {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: var(--spacing-xs);
+}
+
+.field-help a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.field-help a:hover {
+  text-decoration: underline;
 }
 
 .form-group input,
