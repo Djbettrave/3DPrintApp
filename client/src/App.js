@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import './App.css';
@@ -11,6 +12,7 @@ import OrderSuccess from './components/OrderSuccess';
 import NoModelSection from './components/NoModelSection';
 import MultiObjectErrorModal from './components/MultiObjectErrorModal';
 import AssemblyWarningModal from './components/AssemblyWarningModal';
+import { CGV, PrivacyPolicy } from './components/LegalPages';
 import { calculateVolume, calculateDimensions, mm3ToCm3 } from './utils/stlUtils';
 import { analyzeSTLComplete } from './utils/stlAnalyzer';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
@@ -583,4 +585,15 @@ function App() {
   );
 }
 
-export default App;
+// Wrapper avec les routes
+function AppRouter() {
+  return (
+    <Routes>
+      <Route path="/conditions-generales" element={<CGV />} />
+      <Route path="/politique-confidentialite" element={<PrivacyPolicy />} />
+      <Route path="*" element={<App />} />
+    </Routes>
+  );
+}
+
+export default AppRouter;
