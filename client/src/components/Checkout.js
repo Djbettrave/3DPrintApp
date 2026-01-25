@@ -132,7 +132,15 @@ function Checkout({ orderData, onBack, onSuccess }) {
               orderId: paymentIntent.id,
               stripePaymentId: paymentIntent.id,
               customer: formData,
-              order: orderData,
+              order: {
+                ...orderData,
+                shippingCarrier: shippingInfo.carrier?.name,
+                shippingPrice: shippingInfo.price,
+                prices: {
+                  ...orderData.prices,
+                  totalPrice: totalWithShipping
+                }
+              },
             }),
           });
 

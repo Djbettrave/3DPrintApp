@@ -122,20 +122,21 @@ function getAdminEmailHTML(orderData) {
     <!DOCTYPE html>
     <html>
     <head>
+      <meta charset="utf-8">
       <style>
         body { font-family: Arial, sans-serif; background-color: #1a1a2e; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: #16213e; border-radius: 10px; overflow: hidden; color: #fff; }
         .header { background: #e94560; padding: 20px; text-align: center; }
-        .header h1 { margin: 0; font-size: 20px; }
+        .header h1 { margin: 0; font-size: 20px; color: #fff; }
         .content { padding: 25px; }
         .section { background: #1a1a2e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .section h3 { color: #e94560; margin-top: 0; font-size: 14px; text-transform: uppercase; }
-        .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
-        .label { color: #888; }
-        .value { color: #fff; font-weight: bold; }
-        .total { background: #e94560; padding: 15px; border-radius: 8px; text-align: center; font-size: 22px; font-weight: bold; }
-        .action { background: #0f3460; border: 2px solid #e94560; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; }
-        .action a { color: #e94560; text-decoration: none; font-weight: bold; }
+        .section h3 { color: #e94560; margin-top: 0; margin-bottom: 12px; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        .info-table { width: 100%; border-collapse: collapse; }
+        .info-table td { padding: 8px 0; font-size: 14px; vertical-align: top; }
+        .info-table td.label { color: #888; width: 40%; padding-right: 15px; }
+        .info-table td.value { color: #fff; font-weight: bold; text-align: right; }
+        .total { background: #e94560; padding: 15px; border-radius: 8px; text-align: center; font-size: 22px; font-weight: bold; color: #fff; }
+        .order-id { background: #0f3460; border: 2px solid #e94560; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; color: #e94560; font-weight: bold; }
       </style>
     </head>
     <body>
@@ -146,40 +147,57 @@ function getAdminEmailHTML(orderData) {
         <div class="content">
           <div class="section">
             <h3>Client</h3>
-            <div class="row"><span class="label">Nom</span><span class="value">${orderData.customerName}</span></div>
-            <div class="row"><span class="label">Email</span><span class="value">${orderData.customerEmail}</span></div>
-            <div class="row"><span class="label">Téléphone</span><span class="value">${orderData.customerPhone}</span></div>
-            <div class="row"><span class="label">Adresse</span><span class="value">${orderData.customerAddress}</span></div>
-            <div class="row"><span class="label">Ville</span><span class="value">${orderData.customerPostalCode} ${orderData.customerCity}</span></div>
+            <table class="info-table">
+              <tr><td class="label">Nom</td><td class="value">${orderData.customerName}</td></tr>
+              <tr><td class="label">Email</td><td class="value">${orderData.customerEmail}</td></tr>
+              <tr><td class="label">Téléphone</td><td class="value">${orderData.customerPhone}</td></tr>
+              <tr><td class="label">Adresse</td><td class="value">${orderData.customerAddress}</td></tr>
+              <tr><td class="label">Ville</td><td class="value">${orderData.customerPostalCode} ${orderData.customerCity}</td></tr>
+            </table>
           </div>
 
           <div class="section">
             <h3>Impression</h3>
-            <div class="row"><span class="label">Technologie</span><span class="value">${orderData.technology}</span></div>
-            <div class="row"><span class="label">Matériau</span><span class="value">${orderData.material}</span></div>
-            <div class="row"><span class="label">Qualité</span><span class="value">${orderData.quality}</span></div>
-            <div class="row"><span class="label">Volume</span><span class="value">${orderData.volume} cm³</span></div>
-            <div class="row"><span class="label">Finition</span><span class="value">${orderData.postProcessing ? 'Oui (ponçage + apprêt)' : 'Non'}</span></div>
+            <table class="info-table">
+              <tr><td class="label">Technologie</td><td class="value">${orderData.technology}</td></tr>
+              <tr><td class="label">Matériau</td><td class="value">${orderData.material}</td></tr>
+              <tr><td class="label">Qualité</td><td class="value">${orderData.quality}</td></tr>
+              <tr><td class="label">Volume</td><td class="value">${orderData.volume} cm³</td></tr>
+              <tr><td class="label">Finition</td><td class="value">${orderData.postProcessing ? 'Oui (ponçage + apprêt)' : 'Non'}</td></tr>
+            </table>
           </div>
 
           <div class="section">
-            <h3>Livraison</h3>
-            <div class="row"><span class="label">Mode</span><span class="value">${orderData.deliveryType}</span></div>
-            <div class="row"><span class="label">Délai</span><span class="value">${orderData.deliveryDelay}</span></div>
+            <h3>Production</h3>
+            <table class="info-table">
+              <tr><td class="label">Mode</td><td class="value">${orderData.deliveryType}</td></tr>
+              <tr><td class="label">Délai production</td><td class="value">${orderData.deliveryDelay}</td></tr>
+            </table>
+          </div>
+
+          <div class="section">
+            <h3>Expédition</h3>
+            <table class="info-table">
+              <tr><td class="label">Transporteur</td><td class="value">${orderData.shippingCarrier || 'Non spécifié'}</td></tr>
+              <tr><td class="label">Frais de port</td><td class="value">${orderData.shippingPrice || '0.00'} €</td></tr>
+            </table>
           </div>
 
           <div class="section">
             <h3>Prix</h3>
-            <div class="row"><span class="label">Impression</span><span class="value">${orderData.printPrice} €</span></div>
-            <div class="row"><span class="label">Finition</span><span class="value">${orderData.finishingPrice} €</span></div>
-            <div class="row"><span class="label">Livraison extra</span><span class="value">${orderData.deliveryExtra} €</span></div>
+            <table class="info-table">
+              <tr><td class="label">Impression</td><td class="value">${orderData.printPrice} €</td></tr>
+              <tr><td class="label">Finition</td><td class="value">${orderData.finishingPrice} €</td></tr>
+              <tr><td class="label">Supplément express</td><td class="value">${orderData.deliveryExtra} €</td></tr>
+              <tr><td class="label">Frais de port</td><td class="value">${orderData.shippingPrice || '0.00'} €</td></tr>
+            </table>
           </div>
 
           <div class="total">
             TOTAL : ${orderData.totalPrice} €
           </div>
 
-          <div class="action">
+          <div class="order-id">
             ID Commande: ${orderData.orderId}
           </div>
         </div>
@@ -391,6 +409,8 @@ app.post('/api/orders', async (req, res) => {
       postProcessing: order.postProcessing || false,
       deliveryType: order.delivery?.name,
       deliveryDelay: order.delivery?.delay,
+      shippingCarrier: order.shippingCarrier || null,
+      shippingPrice: order.shippingPrice ? parseFloat(order.shippingPrice).toFixed(2) : '0.00',
       printPrice: order.prices?.printPrice?.toFixed(2),
       finishingPrice: (order.prices?.finishingPrice || 0).toFixed(2),
       deliveryExtra: (order.prices?.deliveryExtra || 0).toFixed(2),
