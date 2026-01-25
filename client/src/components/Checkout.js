@@ -36,6 +36,7 @@ function Checkout({ orderData, onBack, onSuccess }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCarrier, setSelectedCarrier] = useState('colissimo');
+  const [acceptRGPD, setAcceptRGPD] = useState(false);
 
   // Calcul du poids et prix de livraison
   const shippingInfo = useMemo(() => {
@@ -195,7 +196,8 @@ function Checkout({ orderData, onBack, onSuccess }) {
       formData.address &&
       formData.city &&
       formData.postalCode &&
-      formData.phone
+      formData.phone &&
+      acceptRGPD
     );
   };
 
@@ -385,6 +387,30 @@ function Checkout({ orderData, onBack, onSuccess }) {
                 Paiement sécurisé par Stripe
               </div>
             </section>
+
+            {/* RGPD */}
+            <div className="rgpd-section">
+              <label className="rgpd-checkbox">
+                <input
+                  type="checkbox"
+                  checked={acceptRGPD}
+                  onChange={(e) => setAcceptRGPD(e.target.checked)}
+                />
+                <span className="checkmark"></span>
+                <span className="rgpd-text">
+                  J'accepte les{' '}
+                  <a href="/conditions-generales" target="_blank" rel="noopener noreferrer">
+                    conditions générales de vente
+                  </a>{' '}
+                  et la{' '}
+                  <a href="/politique-confidentialite" target="_blank" rel="noopener noreferrer">
+                    politique de confidentialité
+                  </a>
+                  . Conformément au RGPD, vos données personnelles sont utilisées uniquement
+                  pour le traitement de votre commande.
+                </span>
+              </label>
+            </div>
 
             {error && (
               <div className="error-message">
