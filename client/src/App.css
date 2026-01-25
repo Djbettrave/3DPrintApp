@@ -1830,6 +1830,82 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Shipping Carriers */
+.shipping-carriers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.carrier-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.carrier-option:hover {
+  border-color: var(--color-text-muted);
+}
+
+.carrier-option.selected {
+  border-color: var(--color-accent);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.carrier-option input[type="radio"] {
+  display: none;
+}
+
+.carrier-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+}
+
+.carrier-option.selected .carrier-icon {
+  background: var(--color-accent);
+  color: white;
+}
+
+.carrier-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.carrier-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.carrier-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.carrier-delay {
+  font-size: 0.813rem;
+  color: var(--color-text-muted);
+}
+
+.carrier-price {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
 /* Card Element */
 .card-element-wrapper {
   padding: var(--spacing-md);

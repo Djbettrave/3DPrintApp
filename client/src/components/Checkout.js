@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { SHIPPING_CARRIERS, estimateWeight, getShippingPrice } from '../config/pricing';
 
 const CARD_ELEMENT_OPTIONS = {
   style: {
@@ -34,6 +35,21 @@ function Checkout({ orderData, onBack, onSuccess }) {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedCarrier, setSelectedCarrier] = useState('colissimo');
+
+  // Calcul du poids et prix de livraison
+  const shippingInfo = useMemo(() => {
+    const weight = estimateWeight(orderData?.volume || 0);
+    const price = getShippingPrice(selectedCarrier, weight);
+    const carrier = SHIPPING_CARRIERS.find(c => c.id === selectedCarrier);
+    return { weight, price, carrier };
+  }, [orderData?.volume, selectedCarrier]);
+
+  // Total avec frais de port
+  const totalWithShipping = useMemo(() => {
+    const baseTotal = orderData?.prices?.totalPrice || 0;
+    return baseTotal + (shippingInfo.price || 0);
+  }, [orderData?.prices?.totalPrice, shippingInfo.price]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -58,13 +74,15 @@ function Checkout({ orderData, onBack, onSuccess }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: orderData.prices.totalPrice,
+          amount: totalWithShipping,
           metadata: {
             technology: orderData.technology,
             material: orderData.material?.name,
             quality: orderData.quality?.name,
             volume: String(orderData.volume?.toFixed(2)),
             delivery: orderData.delivery?.name,
+            shippingCarrier: shippingInfo.carrier?.name,
+            shippingPrice: String(shippingInfo.price?.toFixed(2)),
             customerEmail: formData.email,
             customerName: `${formData.firstName} ${formData.lastName}`,
           },
@@ -294,6 +312,57 @@ function Checkout({ orderData, onBack, onSuccess }) {
               </div>
             </section>
 
+            {/* Mode de livraison */}
+            <section className="form-section">
+              <h3>Mode de livraison</h3>
+              <div className="shipping-carriers">
+                {SHIPPING_CARRIERS.map(carrier => {
+                  const price = getShippingPrice(carrier.id, shippingInfo.weight);
+                  return (
+                    <label
+                      key={carrier.id}
+                      className={`carrier-option ${selectedCarrier === carrier.id ? 'selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="carrier"
+                        value={carrier.id}
+                        checked={selectedCarrier === carrier.id}
+                        onChange={(e) => setSelectedCarrier(e.target.value)}
+                      />
+                      <div className="carrier-icon">
+                        {carrier.icon === 'relay' && (
+                          <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 5.02944 7.02944 1 12 1C16.9706 1 21 5.02944 21 10Z" stroke="currentColor" strokeWidth="2"/>
+                            <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2"/>
+                          </svg>
+                        )}
+                        {carrier.icon === 'box' && (
+                          <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M21 8V21H3V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M23 3H1V8H23V3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M10 12H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          </svg>
+                        )}
+                        {carrier.icon === 'lightning' && (
+                          <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="carrier-info">
+                        <span className="carrier-name">{carrier.name}</span>
+                        <span className="carrier-delay">{carrier.delay} • {carrier.desc}</span>
+                      </div>
+                      <span className="carrier-price">
+                        {price !== null ? `${price.toFixed(2)}€` : 'Indisponible'}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+
             {/* Paiement */}
             <section className="form-section">
               <h3>Paiement</h3>
@@ -322,7 +391,7 @@ function Checkout({ orderData, onBack, onSuccess }) {
             <button
               type="submit"
               className="submit-btn"
-              disabled={!stripe || isProcessing || !isFormValid()}
+              disabled={!stripe || isProcessing || !isFormValid() || !shippingInfo.price}
             >
               {isProcessing ? (
                 <>
@@ -331,7 +400,7 @@ function Checkout({ orderData, onBack, onSuccess }) {
                 </>
               ) : (
                 <>
-                  Payer {orderData?.prices?.totalPrice?.toFixed(2)} €
+                  Payer {totalWithShipping.toFixed(2)} €
                 </>
               )}
             </button>
@@ -372,7 +441,7 @@ function Checkout({ orderData, onBack, onSuccess }) {
             )}
 
             <div className="summary-section">
-              <h4>Livraison</h4>
+              <h4>Production</h4>
               <div className="summary-row">
                 <span>{orderData?.delivery?.name}</span>
                 <span>{orderData?.delivery?.delay}</span>
@@ -385,9 +454,21 @@ function Checkout({ orderData, onBack, onSuccess }) {
               )}
             </div>
 
+            <div className="summary-section">
+              <h4>Livraison</h4>
+              <div className="summary-row">
+                <span>{shippingInfo.carrier?.name}</span>
+                <span>{shippingInfo.carrier?.delay}</span>
+              </div>
+              <div className="summary-row">
+                <span>Frais de port</span>
+                <span>+{shippingInfo.price?.toFixed(2)}€</span>
+              </div>
+            </div>
+
             <div className="summary-total">
               <span>Total</span>
-              <span>{orderData?.prices?.totalPrice?.toFixed(2)} €</span>
+              <span>{totalWithShipping.toFixed(2)} €</span>
             </div>
           </aside>
         </div>
