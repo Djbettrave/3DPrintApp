@@ -57,17 +57,17 @@ function getCustomerEmailHTML(orderData) {
       <style>
         body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; }
-        .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; text-align: center; }
+        .header { background: linear-gradient(135deg, #3d6182, #4e7396); color: white; padding: 30px; text-align: center; }
         .header h1 { margin: 0; font-size: 24px; }
         .header .brand { font-size: 14px; opacity: 0.9; margin-top: 8px; }
         .content { padding: 30px; }
         .order-id { background: #f0f0f0; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
-        .order-id span { font-size: 18px; font-weight: bold; color: #6366f1; }
+        .order-id span { font-size: 18px; font-weight: bold; color: #3d6182; }
         .section { margin-bottom: 25px; }
-        .section h3 { color: #333; border-bottom: 2px solid #6366f1; padding-bottom: 10px; }
+        .section h3 { color: #333; border-bottom: 2px solid #3d6182; padding-bottom: 10px; }
         .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
         .row:last-child { border-bottom: none; }
-        .total { background: #6366f1; color: white; padding: 15px; border-radius: 8px; text-align: center; font-size: 20px; margin-top: 20px; }
+        .total { background: #3d6182; color: white; padding: 15px; border-radius: 8px; text-align: center; font-size: 20px; margin-top: 20px; }
         .footer { background: #333; color: #999; padding: 20px; text-align: center; font-size: 12px; }
       </style>
     </head>
@@ -124,19 +124,19 @@ function getAdminEmailHTML(orderData) {
     <head>
       <meta charset="utf-8">
       <style>
-        body { font-family: Arial, sans-serif; background-color: #1a1a2e; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #16213e; border-radius: 10px; overflow: hidden; color: #fff; }
-        .header { background: #e94560; padding: 20px; text-align: center; }
+        body { font-family: Arial, sans-serif; background-color: #0f1e2e; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #1c3349; border-radius: 10px; overflow: hidden; color: #fff; }
+        .header { background: #3d6182; padding: 20px; text-align: center; }
         .header h1 { margin: 0; font-size: 20px; color: #fff; }
         .content { padding: 25px; }
-        .section { background: #1a1a2e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .section h3 { color: #e94560; margin-top: 0; margin-bottom: 12px; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        .section { background: #0f1e2e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .section h3 { color: #3d6182; margin-top: 0; margin-bottom: 12px; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 8px; }
         .info-table { width: 100%; border-collapse: collapse; }
         .info-table td { padding: 8px 0; font-size: 14px; vertical-align: top; }
         .info-table td.label { color: #888; width: 40%; padding-right: 15px; }
         .info-table td.value { color: #fff; font-weight: bold; text-align: right; }
-        .total { background: #e94560; padding: 15px; border-radius: 8px; text-align: center; font-size: 22px; font-weight: bold; color: #fff; }
-        .order-id { background: #0f3460; border: 2px solid #e94560; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; color: #e94560; font-weight: bold; }
+        .total { background: #3d6182; padding: 15px; border-radius: 8px; text-align: center; font-size: 22px; font-weight: bold; color: #fff; }
+        .order-id { background: #243f59; border: 2px solid #3d6182; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; color: #3d6182; font-weight: bold; }
       </style>
     </head>
     <body>
@@ -673,18 +673,18 @@ function getQuoteRequestEmailHTML(data) {
     <html>
     <head>
       <style>
-        body { font-family: Arial, sans-serif; background-color: #1a1a2e; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #16213e; border-radius: 10px; overflow: hidden; color: #fff; }
-        .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 25px; text-align: center; }
+        body { font-family: Arial, sans-serif; background-color: #0f1e2e; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #1c3349; border-radius: 10px; overflow: hidden; color: #fff; }
+        .header { background: linear-gradient(135deg, #3d6182, #4e7396); padding: 25px; text-align: center; }
         .header h1 { margin: 0; font-size: 22px; }
         .content { padding: 25px; }
-        .section { background: #1a1a2e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .section h3 { margin: 0 0 10px 0; color: #8b5cf6; font-size: 14px; text-transform: uppercase; }
+        .section { background: #0f1e2e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .section h3 { margin: 0 0 10px 0; color: #4e7396; font-size: 14px; text-transform: uppercase; }
         .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a4e; }
         .row:last-child { border-bottom: none; }
         .label { color: #999; }
         .value { color: #fff; font-weight: 500; }
-        .message { background: #1a1a2e; padding: 15px; border-radius: 8px; white-space: pre-wrap; line-height: 1.5; }
+        .message { background: #0f1e2e; padding: 15px; border-radius: 8px; white-space: pre-wrap; line-height: 1.5; }
         .files { margin-top: 15px; }
         .file-item { display: inline-block; padding: 5px 12px; background: #2a2a4e; border-radius: 20px; margin: 4px; font-size: 12px; }
       </style>
@@ -697,7 +697,7 @@ function getQuoteRequestEmailHTML(data) {
         <div class="content">
           <div class="section">
             <h3>Type de service</h3>
-            <div class="value" style="font-size: 18px; color: #8b5cf6;">
+            <div class="value" style="font-size: 18px; color: #4e7396;">
               ${data.serviceType === 'scan' ? 'Scan 3D professionnel' : 'Modélisation CAD'}
             </div>
           </div>
@@ -777,7 +777,7 @@ app.post('/api/quote-requests', quoteUpload.array('files', 10), async (req, res)
           <style>
             body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }
             .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; }
-            .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; text-align: center; }
+            .header { background: linear-gradient(135deg, #3d6182, #4e7396); color: white; padding: 30px; text-align: center; }
             .content { padding: 30px; }
             .footer { background: #333; color: #999; padding: 20px; text-align: center; font-size: 12px; }
           </style>

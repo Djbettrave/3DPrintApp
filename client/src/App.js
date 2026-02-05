@@ -25,8 +25,8 @@ const STRIPE_OPTIONS = {
   appearance: {
     theme: 'night',
     variables: {
-      colorPrimary: '#6366f1',
-      colorBackground: '#16161f',
+      colorPrimary: '#4e7396',
+      colorBackground: '#121e30',
       colorText: '#ffffff',
       colorDanger: '#ef4444',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',

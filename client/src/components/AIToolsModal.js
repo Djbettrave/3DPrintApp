@@ -7,7 +7,7 @@ const AI_TOOLS = [
     description: 'Transformez vos photos en modèles 3D de haute qualité. Idéal pour les objets du quotidien.',
     feature: 'Photo → 3D',
     url: 'https://www.meshy.ai',
-    color: '#6366f1'
+    color: '#4e7396'
   },
   {
     id: 'tripo3d',
@@ -15,7 +15,7 @@ const AI_TOOLS = [
     description: 'Générez des modèles 3D à partir de descriptions textuelles. Décrivez votre idée, l\'IA crée le modèle.',
     feature: 'Texte → 3D',
     url: 'https://www.tripo3d.ai',
-    color: '#8b5cf6'
+    color: '#3d6182'
   },
   {
     id: 'rodin',
@@ -23,7 +23,7 @@ const AI_TOOLS = [
     description: 'Spécialisé dans la création de personnages et objets complexes à partir d\'images ou de concepts.',
     feature: 'Objet → 3D',
     url: 'https://hyperhuman.deemos.com/rodin',
-    color: '#a855f7'
+    color: '#2f4f6e'
   }
 ];
 

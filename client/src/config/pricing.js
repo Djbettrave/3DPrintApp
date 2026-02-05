@@ -109,7 +109,7 @@ export const SLA_CONFIG = {
       id: 'standard',
       name: 'Résine Standard',
       price: 0.2,           // Prix en €/cm³
-      color: '#8b5cf6',      // Couleur d'affichage (violet)
+      color: '#4e7396',      // Couleur d'affichage (bleu ardoise)
       desc: 'Polyvalente, finition lisse'
     }
   ],
