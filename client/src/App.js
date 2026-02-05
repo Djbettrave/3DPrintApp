@@ -23,11 +23,11 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY || 'pk_
 
 const STRIPE_OPTIONS = {
   appearance: {
-    theme: 'night',
+    theme: 'stripe',
     variables: {
-      colorPrimary: '#4e7396',
-      colorBackground: '#121e30',
-      colorText: '#ffffff',
+      colorPrimary: '#3d6182',
+      colorBackground: '#ffffff',
+      colorText: '#0f172a',
       colorDanger: '#ef4444',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       borderRadius: '10px',

@@ -5,11 +5,11 @@ import { SHIPPING_CARRIERS, estimateWeight, getShippingPrice } from '../config/p
 const CARD_ELEMENT_OPTIONS = {
   style: {
     base: {
-      color: '#ffffff',
+      color: '#0f172a',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       fontSize: '16px',
       '::placeholder': {
-        color: '#606070',
+        color: '#94a3b8',
       },
     },
     invalid: {

@@ -453,7 +453,7 @@ function STLViewer({ fileData, fileName, onModelLoad, onScaleApply }) {
         gl={{ antialias: true }}
       >
         {/* Fond dégradé */}
-        <color attach="background" args={['#0f0f1a']} />
+        <color attach="background" args={['#1e293b']} />
 
         {/* Environnement pour les reflets */}
         <Environment preset="city" />
@@ -544,9 +544,6 @@ function STLViewer({ fileData, fileName, onModelLoad, onScaleApply }) {
                   </svg>
                 )}
               </button>
-              <button className="reset-scale-btn" onClick={resetScale} title="Réinitialiser l'échelle">
-                Reset
-              </button>
             </div>
           </div>
 
@@ -592,6 +589,9 @@ function STLViewer({ fileData, fileName, onModelLoad, onScaleApply }) {
               }
             </span>
           </div>
+          <button className="reset-scale-btn" onClick={resetScale} title="Réinitialiser l'échelle">
+            Reset
+          </button>
 
           <div className="dimensions-actions">
             {hasScaleChanged && (
