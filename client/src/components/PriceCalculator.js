@@ -63,8 +63,8 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
   // Vérifier si devis sur demande forcé par le flow (STL non conforme)
   const isSTLQuoteOnly = quoteEligibility === 'QUOTE_ONLY';
 
-  // Vérifier si devis sur demande (finition pro OU délai urgent OU STL non conforme)
-  const isQuoteRequest = finishType === 'pro' || selectedDelivery === 'urgent' || isSTLQuoteOnly;
+  // Vérifier si devis sur demande (finition pro OU STL non conforme)
+  const isQuoteRequest = finishType === 'pro' || isSTLQuoteOnly;
 
   // Vérifier si les dimensions dépassent la limite
   const isOversized = useMemo(() => {
@@ -134,11 +134,9 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
 
   // Générer la raison du devis
   const getQuoteReason = () => {
-    const isUrgent = selectedDelivery === 'urgent';
     const isPro = finishType === 'pro';
     const reasons = [
       isSTLQuoteOnly && 'STL nécessitant vérification',
-      isUrgent && 'Délai ultra rapide',
       isPro && 'Finition professionnelle'
     ].filter(Boolean);
     return reasons.join(' + ') || 'Demande de devis';
@@ -388,31 +386,20 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
                 {DELIVERY_OPTIONS.map((option) => (
                   <button
                     key={option.id}
-                    className={`delivery-option ${selectedDelivery === option.id ? 'selected' : ''} ${option.id === 'urgent' ? 'delivery-option--urgent' : ''}`}
+                    className={`delivery-option ${selectedDelivery === option.id ? 'selected' : ''}`}
                     onClick={() => setSelectedDelivery(option.id)}
                   >
                     <DeliveryIcon type={option.icon} />
                     <div className="delivery-option-content">
                       <span className="delivery-option-name">{option.name}</span>
-                      {option.id !== 'urgent' && (
-                        <span className="delivery-option-delay">{option.delay}</span>
-                      )}
+                      <span className="delivery-option-delay">{option.delay}</span>
                     </div>
-                    {option.id === 'urgent' ? (
-                      <span className="delivery-option-price">Sur devis</span>
-                    ) : (
-                      <span className="delivery-option-price">
-                        {option.multiplier === 1 ? 'Inclus' : ''}
-                      </span>
-                    )}
+                    <span className="delivery-option-price">
+                      {option.shippingPrice.toFixed(2)}€
+                    </span>
                   </button>
                 ))}
               </div>
-              {selectedDelivery === 'urgent' && (
-                <p className="delivery-urgent-info">
-                  Moins de 3 jours : sur devis. On revient vers vous sous 24h.
-                </p>
-              )}
             </div>
 
             {/* Résumé du prix */}
@@ -428,10 +415,6 @@ function PriceCalculator({ volume, dimensions, onCheckout, quoteEligibility = 'A
                     <p>
                       {isSTLQuoteOnly
                         ? 'Votre fichier STL nécessite une vérification manuelle.'
-                        : selectedDelivery === 'urgent' && finishType === 'pro'
-                        ? 'Délai ultra rapide + Finition professionnelle sélectionnés.'
-                        : selectedDelivery === 'urgent'
-                        ? 'Délai ultra rapide sélectionné.'
                         : 'Finition professionnelle sélectionnée.'}
                       <br/>Devis personnalisé sous 24h.
                     </p>

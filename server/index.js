@@ -178,7 +178,6 @@ function getAdminEmailHTML(orderData) {
           <div class="section">
             <h3>Expédition</h3>
             <table class="info-table">
-              <tr><td class="label">Transporteur</td><td class="value">${orderData.shippingCarrier || 'Non spécifié'}</td></tr>
               <tr><td class="label">Frais de port</td><td class="value">${orderData.shippingPrice || '0.00'} €</td></tr>
             </table>
           </div>
@@ -409,7 +408,6 @@ app.post('/api/orders', async (req, res) => {
       postProcessing: order.postProcessing || false,
       deliveryType: order.delivery?.name,
       deliveryDelay: order.delivery?.delay,
-      shippingCarrier: order.shippingCarrier || null,
       shippingPrice: order.shippingPrice ? parseFloat(order.shippingPrice).toFixed(2) : '0.00',
       printPrice: order.prices?.printPrice?.toFixed(2),
       finishingPrice: (order.prices?.finishingPrice || 0).toFixed(2),

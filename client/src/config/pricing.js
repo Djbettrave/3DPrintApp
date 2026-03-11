@@ -168,26 +168,20 @@ export const DELIVERY_CONFIG = {
     {
       id: 'standard',
       name: 'Standard',
-      delay: '7-10 jours',
+      delay: '3-5 jours',
       icon: 'slow',
       multiplier: 1.0,         // Pas de surcoût (×1.0)
-      desc: 'Livraison économique'
+      shippingPrice: 7.90,     // Frais de port fixes
+      desc: 'Livraison standard'
     },
     {
-      id: 'express',
-      name: 'Express',
-      delay: '3-5 jours',
+      id: 'rapide',
+      name: 'Rapide',
+      delay: '48h',
       icon: 'fast',
       multiplier: 1.3,         // +30% du prix impression
-      desc: 'Priorité de production'
-    },
-    {
-      id: 'urgent',
-      name: 'Moins de 3 jours',
-      delay: '24-48h',
-      icon: 'lightning',
-      multiplier: 1.5,         // +50% du prix impression
-      desc: 'Traitement immédiat'
+      shippingPrice: 14.90,    // Frais de port express
+      desc: 'Livraison express'
     }
   ]
 };
@@ -195,61 +189,9 @@ export const DELIVERY_CONFIG = {
 // ----------------------------------------
 // TRANSPORTEURS (Frais de port)
 // ----------------------------------------
-// Tarifs avec marge de 20% incluse
-export const SHIPPING_CONFIG = {
-  // Densité moyenne pour estimer le poids (g/cm³)
-  // PLA: ~1.24, PETG: ~1.27, ABS: ~1.04, Résine: ~1.1
-  // On utilise une moyenne basse car les pièces ne sont pas pleines
-  averageDensity: 0.25,  // g/cm³ (pièce avec ~20% remplissage)
-
-  carriers: [
-    {
-      id: 'mondial_relay',
-      name: 'Mondial Relay',
-      delay: '3-5 jours',
-      icon: 'relay',
-      desc: 'Point relais',
-      rates: [
-        { maxWeight: 500, price: 5.40 },
-        { maxWeight: 1000, price: 7.10 },
-        { maxWeight: 2000, price: 8.30 },
-        { maxWeight: 5000, price: 10.20 },
-        { maxWeight: 10000, price: 15.00 },
-        { maxWeight: 30000, price: 30.00 }
-      ]
-    },
-    {
-      id: 'colissimo',
-      name: 'Colissimo',
-      delay: '48h',
-      icon: 'box',
-      desc: 'Livraison domicile',
-      rates: [
-        { maxWeight: 500, price: 9.00 },
-        { maxWeight: 1000, price: 10.20 },
-        { maxWeight: 2000, price: 12.90 },
-        { maxWeight: 5000, price: 18.00 },
-        { maxWeight: 10000, price: 26.40 },
-        { maxWeight: 30000, price: 45.60 }
-      ]
-    },
-    {
-      id: 'chronopost',
-      name: 'Chronopost',
-      delay: '24h',
-      icon: 'lightning',
-      desc: 'Express',
-      rates: [
-        { maxWeight: 500, price: 18.00 },
-        { maxWeight: 1000, price: 21.60 },
-        { maxWeight: 2000, price: 26.40 },
-        { maxWeight: 5000, price: 33.60 },
-        { maxWeight: 10000, price: 45.60 },
-        { maxWeight: 30000, price: 66.00 }
-      ]
-    }
-  ]
-};
+// Les frais de port sont désormais inclus dans les options de livraison (DELIVERY_CONFIG)
+// Ce bloc est conservé pour compatibilité
+export const SHIPPING_CONFIG = {};
 
 // ----------------------------------------
 // EMAIL DE CONTACT
@@ -289,22 +231,8 @@ export const POST_PROCESSING = {
 
 export const DELIVERY_OPTIONS = DELIVERY_CONFIG.options;
 
-export const SHIPPING_CARRIERS = SHIPPING_CONFIG.carriers;
-
-// Fonction utilitaire pour calculer le poids estimé
-export const estimateWeight = (volumeCm3) => {
-  // Retourne le poids en grammes
-  return volumeCm3 * SHIPPING_CONFIG.averageDensity;
-};
-
-// Fonction utilitaire pour obtenir le prix d'expédition
-export const getShippingPrice = (carrierId, weightGrams) => {
-  const carrier = SHIPPING_CONFIG.carriers.find(c => c.id === carrierId);
-  if (!carrier) return null;
-
-  // Poids minimum de 100g pour l'emballage
-  const totalWeight = Math.max(weightGrams + 100, 200);
-
-  const rate = carrier.rates.find(r => totalWeight <= r.maxWeight);
-  return rate ? rate.price : null; // null si trop lourd
+// Fonction utilitaire pour obtenir le prix d'expédition selon le mode de livraison
+export const getShippingPrice = (deliveryId) => {
+  const option = DELIVERY_CONFIG.options.find(o => o.id === deliveryId);
+  return option ? option.shippingPrice : null;
 };

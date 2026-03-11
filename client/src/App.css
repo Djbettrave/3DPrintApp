@@ -1840,76 +1840,34 @@ body {
 }
 
 /* Shipping Carriers */
-.shipping-carriers {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.carrier-option {
+/* Shipping summary box (checkout) */
+.shipping-summary-box {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  justify-content: space-between;
   padding: var(--spacing-md);
   background: var(--color-bg-tertiary);
-  border: 2px solid var(--color-border);
+  border: 2px solid var(--color-accent);
   border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
 }
 
-.carrier-option:hover {
-  border-color: var(--color-text-muted);
-}
-
-.carrier-option.selected {
-  border-color: var(--color-accent);
-  background: rgba(78, 115, 150, 0.1);
-}
-
-.carrier-option input[type="radio"] {
-  display: none;
-}
-
-.carrier-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-}
-
-.carrier-option.selected .carrier-icon {
-  background: var(--color-accent);
-  color: white;
-}
-
-.carrier-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.carrier-info {
-  flex: 1;
+.shipping-summary-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.carrier-name {
+.shipping-summary-name {
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
-.carrier-delay {
+.shipping-summary-delay {
   font-size: 0.813rem;
   color: var(--color-text-muted);
 }
 
-.carrier-price {
+.shipping-summary-price {
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-accent);
